@@ -7,7 +7,7 @@ fn should_be_able_to_end_with_endline() {
 
     let res = inline_comment(comment);
 
-    assert_eq!(Ok(("\n", Token::Comment("hello world"))), res)
+    assert_eq!(Ok(("\n", Token::Comment)), res)
 }
 
 #[test]
@@ -16,5 +16,5 @@ fn should_be_able_to_end_with_eol() {
 
     let res = inline_comment(comment);
 
-    assert_eq!(Ok(("", Token::Comment("hello world"))), res)
+    assert_eq!(Ok(("", Token::Comment)), res)
 }

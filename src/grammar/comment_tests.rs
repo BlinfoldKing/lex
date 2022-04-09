@@ -9,7 +9,7 @@ fn should_be_able_to_comment() {
 
     let res = comment(input);
 
-    assert_eq!(Ok(("", Token::Comment("hello world"))), res)
+    assert_eq!(Ok(("", Token::Comment)), res)
 }
 
 #[test]
@@ -20,7 +20,7 @@ hello world
 
     let res = comment(input);
 
-    assert_eq!(Ok(("", Token::Comment("\nhello world\n"))), res)
+    assert_eq!(Ok(("", Token::Comment)), res)
 }
 
 #[test]

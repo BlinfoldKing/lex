@@ -8,5 +8,5 @@ use nom::{
 pub fn comment(input: &str) -> IResult<&str, Token, ()> {
     let (input, (_, value, _)) = tuple((tag("/*"), take_until("*/"), tag("*/")))(input)?;
 
-    Ok((&input, Token::Comment(&value)))
+    Ok((&input, Token::Comment))
 }

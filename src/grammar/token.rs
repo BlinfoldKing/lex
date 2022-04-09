@@ -1,6 +1,6 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token<'a> {
-    Comment(&'a str),
+    Comment,
     String(&'a str),
     Number(f64),
     Atom(&'a str),
@@ -10,4 +10,5 @@ pub enum Token<'a> {
     Wildcard(&'a str),
     Boolean(bool),
     List(Vec<Token<'a>>),
+    Whitespace,
 }

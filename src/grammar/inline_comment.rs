@@ -8,5 +8,5 @@ use nom::{
 pub fn inline_comment(input: &str) -> IResult<&str, Token, ()> {
     let (input, (_, value)) = pair(tag("//"), is_not("\n\r"))(input)?;
 
-    Ok((&input, Token::Comment(&value)))
+    Ok((&input, Token::Comment))
 }
