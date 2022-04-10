@@ -2,7 +2,7 @@
 use super::{number::number, token::Token};
 
 #[test]
-fn should_be_valid_number() {
+fn should_be_valid_decimal_number() {
     let input = "3.14";
 
     let res = number(input);

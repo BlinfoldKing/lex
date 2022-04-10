@@ -7,5 +7,5 @@ fn should_be_valid_keyword() {
 
     let res = wildcard(input);
 
-    assert_eq!(Ok(("", Token::Wildcard("Hello_world"))), res)
+    assert_eq!(Ok(("", Token::Wildcard("Hello_world", None))), res)
 }

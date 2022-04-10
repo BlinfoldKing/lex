@@ -1,11 +1,19 @@
 use super::token::Token;
-use nom::{bytes::complete::is_a, character::complete::one_of, IResult};
+use nom::{
+    character::complete::one_of,
+    combinator::{opt, recognize},
+    multi::many1,
+    sequence::tuple,
+    IResult,
+};
 
 pub fn variable(input: &str) -> IResult<&str, Token, ()> {
-    let (_, _) = one_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ")(input)?;
+    let (input, value) = recognize(tuple((
+        one_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+        opt(many1(one_of(
+            "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+        ))),
+    )))(input)?;
 
-    let (input, value) =
-        is_a("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")(input)?;
-
-    Ok((&input, Token::Variable(value)))
+    Ok((&input, Token::Variable(value, None)))
 }
