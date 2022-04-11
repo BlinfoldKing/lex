@@ -55,7 +55,7 @@ fn should_be_valid_list_of_mixed_type() {
         Ok((
             "",
             Token::List(vec![
-                Token::String("hello world"),
+                Token::String("hello world".to_owned()),
                 Token::Number(1 as f64),
                 Token::Number(1 as f64),
                 Token::Variable("Hello", None),
@@ -85,7 +85,7 @@ fn should_be_valid_nested_list() {
         Ok((
             "",
             Token::List(vec![
-                Token::String("hello world"),
+                Token::String("hello world".to_owned()),
                 Token::List(vec![Token::Number(1 as f64)]),
                 Token::Number(1 as f64),
             ])

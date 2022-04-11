@@ -9,7 +9,7 @@ fn should_be_valid_double_quoted_string() {
 
     let res = string(input);
 
-    assert_eq!(Ok(("", Token::String("hello world"))), res)
+    assert_eq!(Ok(("", Token::String("hello world".to_owned()))), res)
 }
 
 #[test]
@@ -18,7 +18,7 @@ fn should_be_valid_single_quoted_string() {
 
     let res = string(input);
 
-    assert_eq!(Ok(("", Token::String("hello world"))), res)
+    assert_eq!(Ok(("", Token::String("hello world".to_owned()))), res)
 }
 
 #[test]

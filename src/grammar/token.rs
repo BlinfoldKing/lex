@@ -2,7 +2,7 @@
 pub enum Token<'a> {
     Comment,
     Value,
-    String(&'a str),
+    String(String),
     Number(f64),
     Atom(&'a str),
     Operator(&'a str),
@@ -23,8 +23,8 @@ impl<'a> PartialEq for Token<'a> {
             (Token::Variable(_, Some(a)), b) | (Token::Wildcard(_, Some(a)), b) => &**a == b,
             (b, Token::Variable(_, Some(a))) | (b, Token::Wildcard(_, Some(a))) => &**a == b,
             (Token::Comment, Token::Comment) | (Token::Whitespace, Token::Whitespace) => true,
-            (Token::String(a), Token::String(b))
-            | (Token::Atom(a), Token::Atom(b))
+            (Token::String(a), Token::String(b)) => a == b,
+            (Token::Atom(a), Token::Atom(b))
             | (Token::Operator(a), Token::Operator(b))
             | (Token::Wildcard(a, None), Token::Wildcard(b, None))
             | (Token::Variable(a, None), Token::Variable(b, None))

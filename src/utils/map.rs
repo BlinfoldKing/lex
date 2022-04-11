@@ -5,7 +5,7 @@ pub struct Map<U, V> {
 
 impl<U, V> Map<U, V>
 where
-    U: std::cmp::PartialEq + std::fmt::Debug,
+    U: Clone + std::cmp::PartialEq + std::fmt::Debug,
 {
     pub fn new() -> Self {
         Map { store: vec![] }
@@ -21,7 +21,30 @@ where
         return None;
     }
 
+    pub fn get_index(&self, input: U) -> Option<usize> {
+        for (i, (key, _)) in self.store.iter().enumerate() {
+            if input == *key {
+                return Some(i);
+            }
+        }
+
+        return None;
+    }
+
     pub fn insert(&mut self, key: U, value: V) {
         self.store.push((key, value))
+    }
+
+    pub fn upsert(&mut self, key: U, value: V) {
+        match self.get_index(key.clone()) {
+            None => self.insert(key, value),
+            Some(index) => {
+                let _ = std::mem::replace(&mut self.store[index], (key, value));
+            }
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.store.len()
     }
 }

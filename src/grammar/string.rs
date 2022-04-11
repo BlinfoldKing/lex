@@ -12,5 +12,5 @@ pub fn string(input: &str) -> IResult<&str, Token, ()> {
         tuple((tag("\'"), is_not("\'\n\r"), tag("\'"))),
     ))(input)?;
 
-    Ok((&input, Token::String(&value)))
+    Ok((&input, Token::String(value.to_owned())))
 }

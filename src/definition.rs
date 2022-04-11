@@ -1,3 +1,4 @@
+use crate::ast::State;
 use crate::grammar::token::Token;
 use crate::handler::Handler;
 
@@ -28,10 +29,9 @@ impl<'a> Definition<'a> {
         }
     }
 
-    pub fn handle(&self, inp: Token<'a>) -> Option<Token<'a>> {
+    pub fn handle(&self, state: State<'a>, inp: Token<'a>) -> (State<'a>, Token<'a>) {
         let arg = Self::fill_variable(inp, self.inp_sig.clone());
-        let func = &*self.func;
-        let out = func(arg);
-        Some(Self::fill_variable(out, self.out_sig.clone()))
+        let func = &self.func;
+        func(state, arg)
     }
 }
