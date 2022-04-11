@@ -6,6 +6,7 @@ pub struct Map<U, V> {
 impl<U, V> Map<U, V>
 where
     U: Clone + std::cmp::PartialEq + std::fmt::Debug,
+    V: Clone + std::fmt::Debug,
 {
     pub fn new() -> Self {
         Map { store: vec![] }
@@ -46,5 +47,16 @@ where
 
     pub fn len(&self) -> usize {
         self.store.len()
+    }
+
+    pub fn key_values(&self) -> (Vec<U>, Vec<V>) {
+        let mut keys: Vec<U> = vec![];
+        let mut values: Vec<V> = vec![];
+        for (key, value) in &self.store {
+            keys.push(key.clone());
+            values.push(value.clone());
+        }
+
+        (keys, values)
     }
 }

@@ -6,21 +6,15 @@ use super::operator::operator;
 use super::string::string;
 use super::token::Token;
 use super::variable::variable;
+use super::whitespace::whitespace;
 use super::wildcard::wildcard;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::one_of,
     multi::{many0, many1, separated_list1},
     sequence::tuple,
     Err, IResult,
 };
-
-fn whitespace(input: &str) -> IResult<&str, char, ()> {
-    let (input, value) = one_of("\t\n ")(input)?;
-
-    Ok((input, value))
-}
 
 pub fn list(input: &str) -> IResult<&str, Token, ()> {
     if input.len() < 2 {

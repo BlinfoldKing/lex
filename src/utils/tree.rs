@@ -1,6 +1,6 @@
 use super::map::Map;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Node<T, Y> {
     children: Map<T, Vec<Node<T, Y>>>,
     pub data: Option<Y>,
@@ -8,8 +8,8 @@ pub struct Node<T, Y> {
 
 impl<T, Y> Node<T, Y>
 where
-    T: Clone + std::cmp::PartialEq + std::fmt::Debug,
-    Y: Clone,
+    T: Clone + PartialEq + std::fmt::Debug,
+    Y: Clone + std::fmt::Debug,
 {
     pub fn new() -> Self {
         Node {
@@ -73,7 +73,9 @@ where
 
     pub fn find_all(&self, list: Vec<T>) -> (Vec<T>, Vec<Self>) {
         let mut matches: Vec<Self> = vec![];
-
+        if list.len() < 1 {
+            return (list, matches);
+        }
         let head = list.first().unwrap();
         let tail = &list[1..];
 
@@ -96,6 +98,29 @@ where
         };
 
         (list, matches)
+    }
+
+    /*
+     * utils function
+     * for debugging
+     * */
+    pub fn keys(&self) -> Vec<Vec<T>> {
+        let mut result = vec![];
+        let (keys, values) = self.children.key_values();
+        for (i, value) in values.into_iter().enumerate() {
+            for node in value {
+                if node.children.len() == 0 {
+                    result.push(vec![keys[i].clone()])
+                } else {
+                    for subkey in node.keys() {
+                        let mut key = vec![keys[i].clone()];
+                        key.extend(subkey);
+                        result.push(key)
+                    }
+                }
+            }
+        }
+        result
     }
 }
 

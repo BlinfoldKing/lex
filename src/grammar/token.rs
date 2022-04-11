@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Token<'a> {
     Comment,
     Value,
@@ -41,6 +41,29 @@ impl<'a> PartialEq for Token<'a> {
             (Token::Variable(_, None), _) | (_, Token::Variable(_, None)) => true,
             (Token::Wildcard(_, None), _) | (_, Token::Wildcard(_, None)) => true,
             _ => false,
+        }
+    }
+}
+
+impl<'a> std::fmt::Debug for Token<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Token::List(list) => {
+                write!(f, "(").unwrap();
+                for (i, token) in list.into_iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ").unwrap();
+                    }
+                    token.fmt(f).unwrap();
+                }
+                write!(f, ")")
+            }
+            Token::Variable(str, _) => write!(f, "{}", str),
+            Token::Wildcard(str, _) => write!(f, "_{}", str),
+            Token::Atom(str) | Token::Operator(str) => write!(f, "{}", str),
+            Token::Keyword(str) => write!(f, ".{}", str),
+            Token::Number(n) => write!(f, ".{}", n),
+            _ => write!(f, "{{unknown}}"),
         }
     }
 }

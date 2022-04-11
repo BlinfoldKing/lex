@@ -63,9 +63,32 @@ impl<'a> State<'a> {
         }
         res
     }
+
+    fn debug_state(&self) -> Vec<(Token<'a>, Option<Definition<'a>>)> {
+        let Self(node) = self;
+        let mut result = vec![];
+
+        for key in node.keys() {
+            if let Some((_, n)) = node.find(key.clone()) {
+                result.push((Token::List(key), n.data));
+            }
+        }
+
+        result
+    }
 }
 
-pub fn root<'a>() -> State<'a> {
+impl<'a> std::fmt::Debug for State<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{{\n").unwrap();
+        for (key, def) in self.debug_state() {
+            write!(f, "\t{:?}: {:?}\n", key, def).unwrap();
+        }
+        write!(f, "}}")
+    }
+}
+
+pub fn init<'a>() -> State<'a> {
     let mut r = State::new();
     r = r.load_module(Core {});
     r
@@ -73,7 +96,7 @@ pub fn root<'a>() -> State<'a> {
 
 #[test]
 fn should_be_able_to_add_number() {
-    let r = root();
+    let r = init();
 
     let (_, res) = r
         .exec(Token::List(vec![
@@ -88,15 +111,15 @@ fn should_be_able_to_add_number() {
 
 #[test]
 fn should_be_able_to_declare() {
-    let r = root();
-    let (r, _) = r
+    let r = init();
+    let (r1, _) = r
         .exec(Token::List(vec![
             Token::Keyword("dec"),
             Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
         ]))
         .unwrap();
 
-    let (_, res) = r
+    let (_, res) = r1
         .exec(Token::List(vec![
             Token::Atom("hello"),
             Token::Atom("world"),
@@ -108,7 +131,7 @@ fn should_be_able_to_declare() {
 
 #[test]
 fn should_be_able_to_query() {
-    let r = root();
+    let r = init();
     let (r1, _) = r
         .exec(Token::List(vec![
             Token::Keyword("dec"),

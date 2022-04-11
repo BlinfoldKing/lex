@@ -71,6 +71,9 @@ impl<'a> BinaryOperation<'a> {
         if let Token::List(lst) = arg {
             match &lst[..] {
                 [_, Token::Variable(_, Some(x)), Token::Variable(_, Some(y))] => {
+                    if self.any_fn != None {
+                        return self.any_fn.unwrap()(state, (*x.clone(), *y.clone()));
+                    }
                     match (*x.clone(), *y.clone()) {
                         (Token::Number(a), Token::Number(b)) => {
                             return self.number_fn.unwrap_or(|_, _| None)(state, (a, b))
@@ -166,14 +169,21 @@ impl<'a> UnaryOperation<'a> {
     pub fn exec(&self, state: State<'a>, arg: Token<'a>) -> Option<(State<'a>, Token<'a>)> {
         if let Token::List(lst) = arg {
             match &lst[..] {
-                [_, Token::Variable(_, Some(x))] => match *x.clone() {
-                    Token::Number(a) => return self.number_fn.unwrap_or(|_, _| None)(state, a),
-                    Token::Boolean(a) => return self.boolean_fn.unwrap_or(|_, _| None)(state, a),
-                    Token::Atom(a) => return self.atom_fn.unwrap_or(|_, _| None)(state, a),
-                    Token::String(a) => return self.string_fn.unwrap_or(|_, _| None)(state, a),
-                    Token::List(a) => return self.list_fn.unwrap_or(|_, _| None)(state, a),
-                    a => return self.any_fn.unwrap_or(|_, _| None)(state, a),
-                },
+                [_, Token::Variable(_, Some(x))] => {
+                    if self.any_fn != None {
+                        return self.any_fn.unwrap()(state, *x.clone());
+                    }
+                    match *x.clone() {
+                        Token::Number(a) => return self.number_fn.unwrap_or(|_, _| None)(state, a),
+                        Token::Boolean(a) => {
+                            return self.boolean_fn.unwrap_or(|_, _| None)(state, a)
+                        }
+                        Token::Atom(a) => return self.atom_fn.unwrap_or(|_, _| None)(state, a),
+                        Token::String(a) => return self.string_fn.unwrap_or(|_, _| None)(state, a),
+                        Token::List(a) => return self.list_fn.unwrap_or(|_, _| None)(state, a),
+                        a => return self.any_fn.unwrap_or(|_, _| None)(state, a),
+                    }
+                }
                 _ => (),
             }
         }

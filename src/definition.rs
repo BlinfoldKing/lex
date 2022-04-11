@@ -35,3 +35,9 @@ impl<'a> Definition<'a> {
         func(state, arg)
     }
 }
+
+impl<'a> std::fmt::Debug for Definition<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?} -> {:?}", self.inp_sig, self.out_sig)
+    }
+}
