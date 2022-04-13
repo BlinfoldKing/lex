@@ -59,4 +59,12 @@ where
 
         (keys, values)
     }
+
+    pub fn get_all(&self) -> Vec<(U, V)> {
+        self.store.clone()
+    }
+
+    pub fn extend(&mut self, input: Map<U, V>) {
+        self.store.extend(input.get_all().into_iter())
+    }
 }

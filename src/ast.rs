@@ -20,7 +20,7 @@ impl<'a> State<'a> {
         Self(new)
     }
 
-    pub fn query(&self, token: Token<'a>) -> Vec<Token<'a>> {
+    pub fn query(&self, token: Token<'a>) -> Vec<Definition<'a>> {
         let Self(node) = self;
 
         let (_, res) = match token.clone() {
@@ -28,12 +28,24 @@ impl<'a> State<'a> {
             t => node.find_all(vec![t]),
         };
 
-        res.into_iter()
-            .map(|n| n.clone().data.unwrap().inp_sig)
-            .collect()
+        res.into_iter().map(|n| n.clone().data.unwrap()).collect()
     }
 
-    pub fn exec(&self, token: Token<'a>) -> Option<(Self, Token<'a>)> {
+    pub fn find(&self, token: Token<'a>) -> Option<Definition<'a>> {
+        let Self(node) = self;
+
+        let res = match token.clone() {
+            Token::List(l) => node.find(l),
+            t => node.find(vec![t]),
+        };
+
+        match res {
+            None => None,
+            Some((_, n)) => n.data,
+        }
+    }
+
+    pub fn exec(&self, token: Token<'a>) -> (Self, Token<'a>) {
         let Self(node) = self;
         let new = node.clone();
 
@@ -48,8 +60,8 @@ impl<'a> State<'a> {
         };
 
         match cb {
-            Some(def) => Some(def.handle(self.clone(), token)),
-            _ => None,
+            Some(def) => def.handle(self.clone(), token),
+            _ => (self.clone(), token),
         }
     }
 
@@ -98,13 +110,11 @@ pub fn init<'a>() -> State<'a> {
 fn should_be_able_to_add_number() {
     let r = init();
 
-    let (_, res) = r
-        .exec(Token::List(vec![
-            Token::Operator("+"),
-            Token::Number(3 as f64),
-            Token::Number(3 as f64),
-        ]))
-        .unwrap();
+    let (_, res) = r.exec(Token::List(vec![
+        Token::Operator("+"),
+        Token::Number(3 as f64),
+        Token::Number(3 as f64),
+    ]));
 
     assert_eq!(Token::Number(6 as f64), res)
 }
@@ -112,51 +122,119 @@ fn should_be_able_to_add_number() {
 #[test]
 fn should_be_able_to_declare() {
     let r = init();
-    let (r1, _) = r
-        .exec(Token::List(vec![
-            Token::Keyword("dec"),
-            Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
-        ]))
-        .unwrap();
+    let (r1, _) = r.exec(Token::List(vec![
+        Token::Keyword("dec"),
+        Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
+    ]));
 
-    let (_, res) = r1
-        .exec(Token::List(vec![
-            Token::Atom("hello"),
-            Token::Atom("world"),
-        ]))
-        .unwrap();
+    let (_, res) = r1.exec(Token::List(vec![
+        Token::Atom("hello"),
+        Token::Atom("world"),
+    ]));
 
     assert_eq!(Token::Boolean(true), res)
 }
 
-#[test]
-fn should_be_able_to_query() {
-    let r = init();
-    let (r1, _) = r
-        .exec(Token::List(vec![
+#[cfg(test)]
+mod test_find {
+    use super::*;
+
+    fn setup<'a>() -> State<'a> {
+        let r = init();
+        let (r1, _) = r.exec(Token::List(vec![
             Token::Keyword("dec"),
             Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
-        ]))
-        .unwrap();
-    let (r2, _) = r1
-        .exec(Token::List(vec![
+        ]));
+        let (r2, _) = r1.exec(Token::List(vec![
             Token::Keyword("dec"),
             Token::List(vec![Token::Atom("hello"), Token::Atom("alien")]),
-        ]))
-        .unwrap();
+        ]));
+        let (r3, _) = r2.exec(Token::List(vec![
+            Token::Keyword("def"),
+            Token::List(vec![Token::Atom("greet"), Token::Variable("X", None)]),
+            Token::List(vec![Token::Atom("hello"), Token::Variable("X", None)]),
+        ]));
+        r3
+    }
 
-    let (_, res) = r2
-        .exec(Token::List(vec![
+    #[test]
+    fn should_be_able_to_find() {
+        let (_, res) = setup().exec(Token::List(vec![
+            Token::Operator("!"),
+            Token::List(vec![Token::Atom("hello"), Token::Variable("X", None)]),
+        ]));
+
+        assert_eq!(
+            Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
+            res
+        )
+    }
+
+    #[test]
+    fn should_be_able_to_find_defined_pattern_with_exact_value() {
+        let (_, res) = setup().exec(Token::List(vec![
+            Token::Operator("!"),
+            Token::List(vec![Token::Atom("greet"), Token::Atom("alien")]),
+        ]));
+
+        assert_eq!(
+            Token::List(vec![Token::Atom("greet"), Token::Atom("alien")]),
+            res
+        )
+    }
+
+    #[test]
+    fn should_be_able_to_find_defined_pattern() {
+        let (_, res) = setup().exec(Token::List(vec![
+            Token::Operator("!"),
+            Token::List(vec![Token::Atom("greet"), Token::Variable("Z", None)]),
+        ]));
+
+        assert_eq!(
+            Token::List(vec![Token::Atom("greet"), Token::Atom("world")]),
+            res
+        )
+    }
+
+    #[test]
+    fn should_be_able_to_exec_defined_pattern() {
+        let (_, res) = setup().exec(Token::List(vec![
+            Token::Atom("greet"),
+            Token::Atom("alien"),
+        ]));
+
+        assert_eq!(Token::Boolean(true), res)
+    }
+
+    #[test]
+    fn should_be_able_to_query() {
+        let (_, res) = setup().exec(Token::List(vec![
             Token::Operator("?"),
             Token::List(vec![Token::Atom("hello"), Token::Variable("X", None)]),
-        ]))
-        .unwrap();
+        ]));
 
-    assert_eq!(
-        Token::List(vec![
-            Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
-            Token::List(vec![Token::Atom("hello"), Token::Atom("alien")]),
-        ]),
-        res
-    )
+        assert_eq!(
+            Token::List(vec![
+                Token::List(vec![Token::Atom("hello"), Token::Atom("world")]),
+                Token::List(vec![Token::Atom("hello"), Token::Atom("alien")]),
+            ]),
+            res
+        )
+    }
+
+    #[test]
+    fn should_be_able_to_query_definition() {
+        let (_, res) = setup().exec(Token::List(vec![
+            Token::Operator("?"),
+            Token::List(vec![Token::Atom("greet"), Token::Variable("Z", None)]),
+        ]));
+
+        assert_eq!(
+            Token::List(vec![
+                Token::List(vec![Token::Atom("greet"), Token::Atom("world")]),
+                Token::List(vec![Token::Atom("greet"), Token::Atom("alien")]),
+            ]),
+            res
+        )
+    }
 }

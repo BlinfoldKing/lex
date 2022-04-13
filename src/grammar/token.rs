@@ -18,6 +18,8 @@ impl<'a> PartialEq for Token<'a> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Token::Value, _) | (_, Token::Value) => true,
+            (Token::Wildcard(_, None), Token::Wildcard(_, None))
+            | (Token::Variable(_, None), Token::Variable(_, None)) => true,
             (Token::Wildcard(_, Some(b)), Token::Variable(_, Some(a)))
             | (Token::Variable(_, Some(b)), Token::Wildcard(_, Some(a))) => a == b,
             (Token::Variable(_, Some(a)), b) | (Token::Wildcard(_, Some(a)), b) => &**a == b,
@@ -26,8 +28,6 @@ impl<'a> PartialEq for Token<'a> {
             (Token::String(a), Token::String(b)) => a == b,
             (Token::Atom(a), Token::Atom(b))
             | (Token::Operator(a), Token::Operator(b))
-            | (Token::Wildcard(a, None), Token::Wildcard(b, None))
-            | (Token::Variable(a, None), Token::Variable(b, None))
             | (Token::Keyword(a), Token::Keyword(b)) => a == b,
             (Token::Boolean(a), Token::Boolean(b)) => a == b,
             (Token::List(a), Token::List(b)) => a == b,
@@ -58,12 +58,19 @@ impl<'a> std::fmt::Debug for Token<'a> {
                 }
                 write!(f, ")")
             }
-            Token::Variable(str, _) => write!(f, "{}", str),
+            Token::Boolean(b) => write!(f, "{}", b),
+            Token::Variable(str, None) => write!(f, "{}", str),
+            Token::Variable(str, Some(value)) => {
+                write!(f, "[").unwrap();
+                write!(f, "{:?}:{:?}", str, **value).unwrap();
+                write!(f, "]")
+            }
             Token::Wildcard(str, _) => write!(f, "_{}", str),
             Token::Atom(str) | Token::Operator(str) => write!(f, "{}", str),
             Token::Keyword(str) => write!(f, ".{}", str),
             Token::Number(n) => write!(f, ".{}", n),
-            _ => write!(f, "{{unknown}}"),
+            Token::Value => write!(f, "{{:value}}"),
+            _ => write!(f, "{{:invalid}}"),
         }
     }
 }
