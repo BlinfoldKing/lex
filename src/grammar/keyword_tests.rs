@@ -9,7 +9,7 @@ fn should_be_valid_keyword() {
 
     let res = keyword(input);
 
-    assert_eq!(Ok(("", Token::Keyword("hello_world"))), res)
+    assert_eq!(Ok(("", Token::Keyword("hello_world".to_owned()))), res)
 }
 
 #[test]

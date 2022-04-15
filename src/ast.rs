@@ -1,16 +1,16 @@
 use crate::definition::Definition;
 use crate::grammar::token::Token;
-use crate::modules::{core::Core, Module};
+use crate::modules::{core::Core, Import, Module};
 use crate::utils::tree::Node;
 
 #[derive(Clone)]
-pub struct State<'a>(Node<Token<'a>, Definition<'a>>);
-impl<'a> State<'a> {
+pub struct State(Node<Token, Definition>);
+impl State {
     pub fn new() -> Self {
         Self(Node::new())
     }
 
-    pub fn add(&self, token: Token<'a>, definition: Definition<'a>) -> Self {
+    pub fn add(&self, token: Token, definition: Definition) -> Self {
         let Self(node) = self;
         let mut new = node.clone();
         match token {
@@ -20,7 +20,7 @@ impl<'a> State<'a> {
         Self(new)
     }
 
-    pub fn query(&self, token: Token<'a>) -> Vec<Definition<'a>> {
+    pub fn query(&self, token: Token) -> Vec<Definition> {
         let Self(node) = self;
 
         let (_, res) = match token.clone() {
@@ -31,7 +31,7 @@ impl<'a> State<'a> {
         res.into_iter().map(|n| n.clone().data.unwrap()).collect()
     }
 
-    pub fn find(&self, token: Token<'a>) -> Option<Definition<'a>> {
+    pub fn find(&self, token: Token) -> Option<Definition> {
         let Self(node) = self;
 
         let res = match token.clone() {
@@ -45,7 +45,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn exec(&self, token: Token<'a>) -> (Self, Token<'a>) {
+    pub fn exec(&self, token: Token) -> (Self, Token) {
         let Self(node) = self;
         let new = node.clone();
 
@@ -67,7 +67,7 @@ impl<'a> State<'a> {
 
     pub fn load_module<T>(&mut self, module: T) -> Self
     where
-        T: Module<'a>,
+        T: Module,
     {
         let mut res = self.clone();
         for def in module.load() {
@@ -76,7 +76,7 @@ impl<'a> State<'a> {
         res
     }
 
-    fn debug_state(&self) -> Vec<(Token<'a>, Option<Definition<'a>>)> {
+    fn debug_state(&self) -> Vec<(Token, Option<Definition>)> {
         let Self(node) = self;
         let mut result = vec![];
 
@@ -90,7 +90,7 @@ impl<'a> State<'a> {
     }
 }
 
-impl<'a> std::fmt::Debug for State<'a> {
+impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{{\n").unwrap();
         for (key, def) in self.debug_state() {
@@ -100,9 +100,10 @@ impl<'a> std::fmt::Debug for State<'a> {
     }
 }
 
-pub fn init<'a>() -> State<'a> {
+pub fn init() -> State {
     let mut r = State::new();
     r = r.load_module(Core {});
+    r = r.load_module(Import {});
     r
 }
 
@@ -139,7 +140,7 @@ fn should_be_able_to_declare() {
 mod test_find {
     use super::*;
 
-    fn setup<'a>() -> State<'a> {
+    fn setup() -> State {
         let r = init();
         let (r1, _) = r.exec(Token::List(vec![
             Token::Keyword("dec"),

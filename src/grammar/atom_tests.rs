@@ -9,7 +9,7 @@ fn should_be_valid_with_underscore() {
 
     let res = atom(input);
 
-    assert_eq!(Ok(("", Token::Atom("hello_world"))), res)
+    assert_eq!(Ok(("", Token::Atom("hello_world".to_owned()))), res)
 }
 
 #[test]

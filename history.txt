@@ -1,0 +1,16 @@
+#V2
+true
+(.include "fmt")
+(.println hello)
+(.include "fmt")
+(.println true)
+(.include "fmt")
+(.println true)
+(+ 1 1)
+(+ 1 10)
+(.include "fmt")
+(.println "hello world")
+(.and true true)
+(.and true false)
+(.or true false)
+   (true)

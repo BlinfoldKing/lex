@@ -7,5 +7,5 @@ pub fn atom(input: &str) -> IResult<&str, Token, ()> {
     let (input, value) =
         is_a("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")(input)?;
 
-    Ok((&input, Token::Atom(value)))
+    Ok((&input, Token::Atom(value.to_owned())))
 }

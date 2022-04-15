@@ -11,5 +11,5 @@ pub fn keyword(input: &str) -> IResult<&str, Token, ()> {
         is_a("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"),
     )(input)?;
 
-    Ok((&input, Token::Keyword(value)))
+    Ok((&input, Token::Keyword(value.to_owned())))
 }

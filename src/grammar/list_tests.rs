@@ -58,8 +58,8 @@ fn should_be_valid_list_of_mixed_type() {
                 Token::String("hello world".to_owned()),
                 Token::Number(1 as f64),
                 Token::Number(1 as f64),
-                Token::Variable("Hello", None),
-                Token::Atom("atom"),
+                Token::Variable("Hello".to_owned(), None),
+                Token::Atom("atom".to_owned()),
             ])
         )),
         res

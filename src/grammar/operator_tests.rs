@@ -9,7 +9,7 @@ fn should_be_valid_operator() {
 
     let res = operator(input);
 
-    assert_eq!(Ok(("", Token::Operator("+"))), res)
+    assert_eq!(Ok(("", Token::Operator("+".to_owned()))), res)
 }
 
 #[test]

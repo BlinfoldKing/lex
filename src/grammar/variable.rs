@@ -15,5 +15,5 @@ pub fn variable(input: &str) -> IResult<&str, Token, ()> {
         ))),
     )))(input)?;
 
-    Ok((&input, Token::Variable(value, None)))
+    Ok((&input, Token::Variable(value.to_owned(), None)))
 }

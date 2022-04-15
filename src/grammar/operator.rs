@@ -19,5 +19,5 @@ pub fn operator(input: &str) -> IResult<&str, Token, ()> {
         tag("!"),
     ))(input)?;
 
-    Ok((&input, Token::Operator(value)))
+    Ok((&input, Token::Operator(value.to_owned())))
 }

@@ -3,17 +3,20 @@ use crate::grammar::token::Token;
 use crate::handler::Handler;
 
 #[derive(Clone)]
-pub struct Definition<'a> {
-    pub inp_sig: Token<'a>,
-    pub out_sig: Token<'a>,
-    pub res_sig: Token<'a>,
-    pub func: Handler<'a>,
+pub struct Definition {
+    pub inp_sig: Token,
+    pub out_sig: Token,
+    pub res_sig: Token,
+    pub func: Handler,
 }
 
-impl<'a> Definition<'a> {
-    pub fn fill_variable(source: Token<'a>, target: Token<'a>) -> Token<'a> {
+impl Definition {
+    pub fn fill_variable(source: Token, target: Token) -> Token {
         match (source, target.clone()) {
             (x, Token::Value) => x,
+            (Token::Document(doc, a), Token::Document(_, b)) => {
+                Token::Document(doc, Box::new(Self::fill_variable(*a.clone(), *b.clone())))
+            }
             (Token::List(list1), Token::List(list2)) => {
                 let res = list1
                     .into_iter()
@@ -33,7 +36,7 @@ impl<'a> Definition<'a> {
         }
     }
 
-    pub fn handle(&self, state: State<'a>, inp: Token<'a>) -> (State<'a>, Token<'a>) {
+    pub fn handle(&self, state: State, inp: Token) -> (State, Token) {
         let arg = Self::fill_variable(inp.clone(), self.inp_sig.clone());
         let func = &self.func;
 
@@ -42,8 +45,14 @@ impl<'a> Definition<'a> {
         let res = Self::fill_variable(out.clone(), self.out_sig.clone());
 
         match inp {
-            Token::List(list) => match list[..] {
-                [Token::Operator("!"), _] => (state, res),
+            Token::List(list) => match &list[..] {
+                [Token::Operator(op), _] => {
+                    if op.clone() == "!".to_owned() || op.clone() == "?".to_owned() {
+                        (state, res)
+                    } else {
+                        state.exec(res)
+                    }
+                }
                 _ => state.exec(res),
             },
             _ => state.exec(res),
@@ -51,7 +60,7 @@ impl<'a> Definition<'a> {
     }
 }
 
-impl<'a> std::fmt::Debug for Definition<'a> {
+impl std::fmt::Debug for Definition {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,

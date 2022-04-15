@@ -14,5 +14,5 @@ pub fn wildcard(input: &str) -> IResult<&str, Token, ()> {
 
     let (_, _) = one_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ")(value)?;
 
-    Ok((&input, Token::Wildcard(value, None)))
+    Ok((&input, Token::Wildcard(value.to_owned(), None)))
 }

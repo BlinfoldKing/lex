@@ -1,22 +1,25 @@
-#[derive(Clone)]
-pub enum Token<'a> {
+#[derive(Clone, Debug)]
+pub enum Token {
     Comment,
     Value,
     String(String),
     Number(f64),
-    Atom(&'a str),
-    Operator(&'a str),
-    Keyword(&'a str),
-    Variable(&'a str, Option<Box<Token<'a>>>),
-    Wildcard(&'a str, Option<Box<Token<'a>>>),
+    Atom(String),
+    Operator(String),
+    Keyword(String),
+    Variable(String, Option<Box<Token>>),
+    Wildcard(String, Option<Box<Token>>),
     Boolean(bool),
-    List(Vec<Token<'a>>),
+    List(Vec<Token>),
     Whitespace,
+    // Document(name: [Atom | String], do: List)
+    Document(Box<Token>, Box<Token>),
 }
 
-impl<'a> PartialEq for Token<'a> {
+impl PartialEq for Token {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Token::Document(_, a), Token::Document(_, b)) => a == b,
             (Token::Value, _) | (_, Token::Value) => true,
             (Token::Wildcard(_, None), Token::Wildcard(_, None))
             | (Token::Variable(_, None), Token::Variable(_, None)) => true,
@@ -45,7 +48,7 @@ impl<'a> PartialEq for Token<'a> {
     }
 }
 
-impl<'a> std::fmt::Debug for Token<'a> {
+impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Token::List(list) => {
@@ -62,15 +65,19 @@ impl<'a> std::fmt::Debug for Token<'a> {
             Token::Variable(str, None) => write!(f, "{}", str),
             Token::Variable(str, Some(value)) => {
                 write!(f, "[").unwrap();
-                write!(f, "{:?}:{:?}", str, **value).unwrap();
+                write!(f, "{}:{}", str, **value).unwrap();
                 write!(f, "]")
             }
             Token::Wildcard(str, _) => write!(f, "_{}", str),
             Token::Atom(str) | Token::Operator(str) => write!(f, "{}", str),
             Token::Keyword(str) => write!(f, ".{}", str),
-            Token::Number(n) => write!(f, ".{}", n),
+            Token::String(str) => write!(f, "\"{}\"", str),
+            Token::Number(n) => write!(f, "{}", n),
             Token::Value => write!(f, "{{:value}}"),
-            _ => write!(f, "{{:invalid}}"),
+            Token::Whitespace => write!(f, "{{:whitespace}}"),
+            Token::Comment => write!(f, "{{:comment}}"),
+            Token::Document(name, content) => write!(f, ".document {} {}", name, content),
+            // _ => write!(f, "{{:invalid}}"),
         }
     }
 }

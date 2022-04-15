@@ -7,5 +7,8 @@ fn should_be_valid_keyword() {
 
     let res = variable(input);
 
-    assert_eq!(Ok(("", Token::Variable("HelloWorld", None))), res)
+    assert_eq!(
+        Ok(("", Token::Variable("HelloWorld".to_owned(), None))),
+        res
+    )
 }
