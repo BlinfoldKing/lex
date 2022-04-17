@@ -52,10 +52,7 @@ impl Import {
 impl Module for Import {
     fn load(&self) -> Vec<Definition> {
         vec![Definition {
-            inp_sig: Token::List(vec![
-                Token::Keyword("include".to_owned()),
-                Token::Variable("Module".to_owned(), None),
-            ]),
+            inp_sig: Token::List(vec![Token::Keyword("include".to_owned()), Token::Value]),
             out_sig: Token::Value,
             res_sig: Token::Value,
             func: Arc::new(Self::import),

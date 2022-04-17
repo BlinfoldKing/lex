@@ -29,7 +29,7 @@ pub fn list(input: &str) -> IResult<&str, Token, ()> {
     let element = separated_list1(
         many1(whitespace),
         alt((
-            boolean, string, atom, keyword, list, number, operator, variable, wildcard,
+            boolean, string, variable, atom, keyword, list, number, operator, variable, wildcard,
         )),
     );
 

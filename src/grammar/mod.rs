@@ -66,6 +66,7 @@ pub fn document(input: &str) -> IResult<&str, Token, ()> {
         whitespace::whitespace,
         inline_comment::inline_comment,
     ));
+
     let list = many1(alt((
         comment::comment,
         inline_comment::inline_comment,
@@ -73,10 +74,6 @@ pub fn document(input: &str) -> IResult<&str, Token, ()> {
         whitespace::whitespace,
     )));
 
-    // let (input, something) = many0(ignore1)(input)?;
-    // println!("{:?} {:?}", input, something);
-
-    // let ignore1 = alt((comment::comment, whitespace::whitespace));
     let (input, (_, kw, _, name, value)) = tuple((
         many0(ignore1),
         keyword::keyword,

@@ -1,0 +1,5 @@
+.document "and"
+
+(.include "fmt")
+
+(.println (.and true true))

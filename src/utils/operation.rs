@@ -70,13 +70,18 @@ impl BinaryOperation {
     pub fn exec(&self, state: State, arg: Token) -> Option<(State, Token)> {
         if let Token::List(lst) = arg {
             match &lst[..] {
-                [_, Token::Variable(_, Some(x)), Token::Variable(_, Some(y))] => {
+                [op, Token::Variable(_, Some(a)), Token::Variable(_, Some(b))] => {
+                    return self
+                        .clone()
+                        .exec(state, Token::List(vec![op.clone(), *a.clone(), *b.clone()]))
+                }
+                [_, x, y] => {
                     if self.any_fn != None {
-                        return self.any_fn.unwrap()(state, (*x.clone(), *y.clone()));
+                        return self.any_fn.unwrap()(state, (x.clone(), y.clone()));
                     }
 
-                    let (state, x) = state.exec(*x.clone());
-                    let (state, y) = state.exec(*y.clone());
+                    let (state, x) = state.exec(x.clone());
+                    let (state, y) = state.exec(y.clone());
 
                     match (x, y) {
                         (Token::Number(a), Token::Number(b)) => {
@@ -114,6 +119,7 @@ pub struct UnaryOperation {
     string_fn: Option<UnaryOpCallback<String>>,
     list_fn: Option<UnaryOpCallback<Vec<Token>>>,
     any_fn: Option<UnaryOpCallback<Token>>,
+    executed_any_fn: Option<UnaryOpCallback<Token>>,
 }
 
 impl UnaryOperation {
@@ -125,6 +131,7 @@ impl UnaryOperation {
             string_fn: None,
             list_fn: None,
             any_fn: None,
+            executed_any_fn: None,
         }
     }
 
@@ -170,15 +177,31 @@ impl UnaryOperation {
         op
     }
 
+    pub fn for_executed_any(&self, func: UnaryOpCallback<Token>) -> Self {
+        let mut op = self.clone();
+        op.executed_any_fn = Some(func);
+
+        op
+    }
+
     pub fn exec(&self, state: State, arg: Token) -> Option<(State, Token)> {
         if let Token::List(lst) = arg {
             match &lst[..] {
-                [_, Token::Variable(_, Some(x))] => {
+                [op, Token::Variable(_, Some(x))] => {
+                    return self
+                        .clone()
+                        .exec(state, Token::List(vec![op.clone(), *x.clone()]))
+                }
+                [_, x] => {
                     if self.any_fn != None {
-                        return self.any_fn.unwrap()(state, *x.clone());
+                        return self.any_fn.unwrap()(state, x.clone());
                     }
 
-                    let (state, inp) = state.exec(*x.clone());
+                    let (state, inp) = state.exec(x.clone());
+
+                    if self.executed_any_fn != None {
+                        return self.executed_any_fn.unwrap()(state, inp);
+                    }
 
                     match inp {
                         Token::Number(a) => return self.number_fn.unwrap_or(|_, _| None)(state, a),

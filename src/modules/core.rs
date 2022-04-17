@@ -2,8 +2,8 @@ use super::Module;
 use crate::ast::State;
 use crate::definition::Definition;
 use crate::grammar::token::Token;
-use crate::utils::map::Map;
 use crate::utils::operation::{BinaryOperation, UnaryOperation};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct Core;
@@ -12,10 +12,13 @@ impl Module for Core {
     fn load(&self) -> Vec<Definition> {
         vec![
             Definition {
-                inp_sig: Token::Document(
-                    Box::new(Token::Variable("Name".to_owned(), None)),
-                    Box::new(Token::Variable("List".to_owned(), None)),
-                ),
+                inp_sig: Token::List(vec![Token::Keyword("debug".to_owned())]),
+                out_sig: Token::Value,
+                res_sig: Token::Value,
+                func: Arc::new(Self::debug_state),
+            },
+            Definition {
+                inp_sig: Token::Document(Box::new(Token::Value), Box::new(Token::Value)),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::document),
@@ -23,8 +26,8 @@ impl Module for Core {
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Operator("+".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
@@ -32,9 +35,19 @@ impl Module for Core {
             },
             Definition {
                 inp_sig: Token::List(vec![
+                    Token::Operator("=".to_owned()),
+                    Token::Value,
+                    Token::Value,
+                ]),
+                out_sig: Token::Value,
+                res_sig: Token::Value,
+                func: Arc::new(Self::eq),
+            },
+            Definition {
+                inp_sig: Token::List(vec![
                     Token::Operator("-".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
@@ -43,19 +56,15 @@ impl Module for Core {
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Operator("*".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::times),
             },
             Definition {
-                inp_sig: Token::List(vec![
-                    Token::Operator("/".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
-                ]),
+                inp_sig: Token::List(vec![Token::Operator("/".to_owned()), Token::Value]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::div_float),
@@ -63,8 +72,8 @@ impl Module for Core {
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Keyword("div".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
@@ -73,8 +82,8 @@ impl Module for Core {
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Keyword("mod".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
@@ -83,48 +92,39 @@ impl Module for Core {
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Keyword("and".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::List(vec![
                     Token::Keyword("and".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 func: Arc::new(Self::and),
             },
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Keyword("or".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::List(vec![
                     Token::Keyword("or".to_owned()),
-                    Token::Variable("X".to_owned(), None),
-                    Token::Variable("Y".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 func: Arc::new(Self::or),
             },
             Definition {
-                inp_sig: Token::List(vec![
-                    Token::Keyword("do".to_owned()),
-                    Token::Variable("List".to_owned(), None),
-                ]),
+                inp_sig: Token::List(vec![Token::Keyword("do".to_owned()), Token::Value]),
                 out_sig: Token::Value,
-                res_sig: Token::List(vec![
-                    Token::Keyword("do".to_owned()),
-                    Token::Variable("List".to_owned(), None),
-                ]),
+                res_sig: Token::List(vec![Token::Keyword("do".to_owned()), Token::Value]),
                 func: Arc::new(Self::do_),
             },
             Definition {
-                inp_sig: Token::List(vec![
-                    Token::Keyword("dec".to_owned()),
-                    Token::Variable("Pattern".to_owned(), None),
-                ]),
+                inp_sig: Token::List(vec![Token::Keyword("dec".to_owned()), Token::Value]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::dec),
@@ -132,27 +132,21 @@ impl Module for Core {
             Definition {
                 inp_sig: Token::List(vec![
                     Token::Keyword("def".to_owned()),
-                    Token::Variable("Pattern".to_owned(), None),
-                    Token::Variable("Condition".to_owned(), None),
+                    Token::Value,
+                    Token::Value,
                 ]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::def),
             },
             Definition {
-                inp_sig: Token::List(vec![
-                    Token::Operator("?".to_owned()),
-                    Token::Variable("Pattern".to_owned(), None),
-                ]),
+                inp_sig: Token::List(vec![Token::Operator("?".to_owned()), Token::Value]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::query),
             },
             Definition {
-                inp_sig: Token::List(vec![
-                    Token::Operator("!".to_owned()),
-                    Token::Variable("Pattern".to_owned(), None),
-                ]),
+                inp_sig: Token::List(vec![Token::Operator("!".to_owned()), Token::Value]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
                 func: Arc::new(Self::find),
@@ -162,6 +156,16 @@ impl Module for Core {
 }
 
 impl Core {
+    fn eq(state: State, arg: Token) -> (State, Token) {
+        let op =
+            BinaryOperation::new().for_any(|state, (a, b)| Some((state, Token::Boolean(a == b))));
+
+        match op.exec(state.clone(), arg) {
+            Some(val) => val,
+            _ => (state, Token::Boolean(false)),
+        }
+    }
+
     fn add(state: State, arg: Token) -> (State, Token) {
         let op =
             BinaryOperation::new().for_number(|state, (a, b)| Some((state, Token::Number(a + b))));
@@ -197,7 +201,7 @@ impl Core {
             let def = Definition {
                 inp_sig: token.clone(),
                 out_sig: Token::Boolean(true),
-                res_sig: token,
+                res_sig: token.clone(),
                 func: Arc::new(Self::true_handler),
             };
 
@@ -217,12 +221,18 @@ impl Core {
             let def = Definition {
                 inp_sig: pattern.clone(),
                 out_sig: condition.clone(),
-                res_sig: pattern,
+                res_sig: pattern.clone(),
                 func: Arc::new(Self::def_handler),
             };
 
+            // println!("\nbefore:\n {:?}\n", s);
+
             let r = s.add(def.clone().inp_sig, def);
 
+            // println!("pattern: {:?}", pattern.clone());
+            // println!("condition: {:?}", condition.clone());
+
+            // println!("\nstate:\n {:?}\n", r);
             Some((r, Token::Boolean(true)))
         });
 
@@ -244,14 +254,14 @@ impl Core {
         res
     }
 
-    fn inject_variables(source: Token, variables: Map<String, Token>) -> Token {
+    fn inject_variables(source: Token, variables: HashMap<String, Token>) -> Token {
         match source {
             Token::List(list) => Token::List(
                 list.into_iter()
                     .map(move |token| Self::inject_variables(token, variables.clone()))
                     .collect(),
             ),
-            Token::Variable(s, _) => match variables.get(s.clone()) {
+            Token::Variable(s, _) => match variables.get(&s.clone()) {
                 None => Token::Variable(s, None),
                 Some(Token::Variable(key, val)) => Token::Variable(key.to_owned(), val.clone()),
                 Some(val) => Token::Variable(s, Some(Box::new(val.clone()))),
@@ -260,11 +270,11 @@ impl Core {
         }
     }
 
-    fn get_variables(source: Token) -> Map<String, Token> {
-        let mut res: Map<String, Token> = Map::new();
+    fn get_variables(source: Token) -> HashMap<String, Token> {
+        let mut res: HashMap<String, Token> = HashMap::new();
         match source.clone() {
             Token::List(list) => {
-                let vars: Vec<Map<String, Token>> = list
+                let vars: Vec<HashMap<String, Token>> = list
                     .into_iter()
                     .map(|token| Self::get_variables(token))
                     .collect();
@@ -272,11 +282,15 @@ impl Core {
                     res.extend(var);
                 }
             }
-            Token::Variable(x, None) => res.insert(x, source),
-            Token::Variable(var, Some(value)) => match *value.clone() {
-                Token::Variable(_, _) => res.insert(var, *value),
-                x => res.insert(var, x),
-            },
+            Token::Variable(x, None) => {
+                let _ = res.insert(x, source);
+            }
+            Token::Variable(var, Some(value)) => {
+                match *value.clone() {
+                    Token::Variable(_, _) => res.insert(var, *value),
+                    x => res.insert(var, x),
+                };
+            }
             _ => (),
         };
 
@@ -348,34 +362,93 @@ impl Core {
                 Some(_) => (),
             }
             let def = def.unwrap();
-            let inp = Definition::fill_variable(token.clone(), def.inp_sig.clone());
-            let vars = Self::get_variables(inp);
-            let cond_sig = Self::inject_variables(def.out_sig.clone(), vars.clone());
+            let args = Self::get_variables(Definition::fill_variable(
+                token.clone(),
+                def.inp_sig.clone(),
+            ));
 
-            let (s, found) = s.exec(Token::List(vec![
-                Token::Operator("!".to_owned()),
-                cond_sig.clone(),
-            ]));
-            let (s, cond) = s.exec(found.clone());
+            match def.out_sig.clone() {
+                Token::Value => {
+                    let inp = Definition::fill_variable(token.clone(), def.clone().inp_sig);
+                    let params = Self::extract_value(inp.clone(), def.inp_sig);
 
-            match cond {
-                Token::Boolean(true) => {
-                    let child = Definition::fill_variable(found.clone(), cond_sig.clone());
-                    let value_vars = Self::get_variables(child);
-                    let res = Self::inject_variables(
-                        Self::inject_variables(def.res_sig, vars),
-                        value_vars,
-                    );
+                    let mut s = s.clone();
+                    let mut new_params: Vec<Token> = vec![];
+                    for param in params.clone() {
+                        let (r, token) =
+                            s.exec(Token::List(vec![Token::Operator("!".to_owned()), param]));
+                        s = r;
+                        new_params.push(token);
+                    }
 
-                    Some((s, res))
+                    let (res, _) = Self::inject_value(def.res_sig, new_params);
+                    return Some((s, res));
                 }
-                token => Some((s, token)),
+                out => {
+                    let inp = Self::inject_variables(out.clone(), args.clone());
+
+                    let (r, t) = s.exec(Token::List(vec![
+                        Token::Operator("!".to_owned()),
+                        inp.clone(),
+                    ]));
+
+                    let t = Definition::fill_variable(t, inp);
+                    let vars = Self::get_variables(t);
+
+                    let res = Self::inject_variables(def.res_sig, args);
+                    let res = Self::inject_variables(res, vars);
+
+                    return Some((r, res));
+                }
             }
         });
 
         match op.exec(state.clone(), arg) {
             Some(val) => val,
             _ => (state, Token::Boolean(false)),
+        }
+    }
+
+    fn extract_value(source: Token, target: Token) -> Vec<Token> {
+        match (source, target) {
+            (Token::List(l1), Token::List(l2)) => {
+                let res: Vec<Token> = l1
+                    .into_iter()
+                    .zip(l2.into_iter())
+                    .map(|(a, b)| Self::extract_value(a, b))
+                    .flatten()
+                    .collect();
+                res
+            }
+            (a, Token::Value) => vec![a],
+            _ => vec![],
+        }
+    }
+
+    fn inject_value(source: Token, values: Vec<Token>) -> (Token, Vec<Token>) {
+        match source {
+            Token::List(list) => {
+                let mut val = values.clone();
+                let mut tokens: Vec<Token> = vec![];
+                for elem in list {
+                    let (t, v) = Self::inject_value(elem, val);
+                    val = v;
+                    tokens.push(t);
+                }
+
+                (Token::List(tokens), val)
+            }
+            Token::Value => {
+                if values.len() == 0 {
+                    return (source, values);
+                }
+
+                let head = values.first().unwrap();
+                let tail = values[1..].to_vec();
+
+                (head.clone(), tail)
+            }
+            _ => (source, values),
         }
     }
 
@@ -465,6 +538,12 @@ impl Core {
         }
 
         (state, Token::Boolean(false))
+    }
+
+    fn debug_state(state: State, _: Token) -> (State, Token) {
+        println!("{:?}", state);
+
+        (state, Token::Boolean(true))
     }
 
     fn true_handler(state: State, _: Token) -> (State, Token) {

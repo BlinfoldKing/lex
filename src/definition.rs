@@ -64,7 +64,7 @@ impl std::fmt::Debug for Definition {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{:?} -> {:?} -> {:?}",
+            "{} -> {} -> {}",
             self.inp_sig, self.out_sig, self.res_sig
         )
     }
