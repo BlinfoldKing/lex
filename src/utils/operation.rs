@@ -1,7 +1,7 @@
-use crate::ast::State;
+use crate::ast::Scope;
 use crate::grammar::token::Token;
 
-type BinaryOpCallback<T> = fn(State, (T, T)) -> Option<(State, Token)>;
+type BinaryOpCallback<T> = fn(Scope, (T, T)) -> Option<(Scope, Token)>;
 
 #[derive(Clone)]
 pub struct BinaryOperation {
@@ -67,39 +67,39 @@ impl BinaryOperation {
         op
     }
 
-    pub fn exec(&self, state: State, arg: Token) -> Option<(State, Token)> {
+    pub fn exec(&self, scope: Scope, arg: Token) -> Option<(Scope, Token)> {
         if let Token::List(lst) = arg {
             match &lst[..] {
                 [op, Token::Variable(_, Some(a)), Token::Variable(_, Some(b))] => {
                     return self
                         .clone()
-                        .exec(state, Token::List(vec![op.clone(), *a.clone(), *b.clone()]))
+                        .exec(scope, Token::List(vec![op.clone(), *a.clone(), *b.clone()]))
                 }
                 [_, x, y] => {
                     if self.any_fn != None {
-                        return self.any_fn.unwrap()(state, (x.clone(), y.clone()));
+                        return self.any_fn.unwrap()(scope, (x.clone(), y.clone()));
                     }
 
-                    let (state, x) = state.exec(x.clone());
-                    let (state, y) = state.exec(y.clone());
+                    let (scope, x) = scope.exec(x.clone());
+                    let (scope, y) = scope.exec(y.clone());
 
                     match (x, y) {
                         (Token::Number(a), Token::Number(b)) => {
-                            return self.number_fn.unwrap_or(|_, _| None)(state, (a, b))
+                            return self.number_fn.unwrap_or(|_, _| None)(scope, (a, b))
                         }
                         (Token::Boolean(a), Token::Boolean(b)) => {
-                            return self.boolean_fn.unwrap_or(|_, _| None)(state, (a, b))
+                            return self.boolean_fn.unwrap_or(|_, _| None)(scope, (a, b))
                         }
                         (Token::Atom(a), Token::Atom(b)) => {
-                            return self.atom_fn.unwrap_or(|_, _| None)(state, (a, b))
+                            return self.atom_fn.unwrap_or(|_, _| None)(scope, (a, b))
                         }
                         (Token::String(a), Token::String(b)) => {
-                            return self.string_fn.unwrap_or(|_, _| None)(state, (a, b))
+                            return self.string_fn.unwrap_or(|_, _| None)(scope, (a, b))
                         }
                         (Token::List(a), Token::List(b)) => {
-                            return self.list_fn.unwrap_or(|_, _| None)(state, (a, b))
+                            return self.list_fn.unwrap_or(|_, _| None)(scope, (a, b))
                         }
-                        (a, b) => return self.any_fn.unwrap_or(|_, _| None)(state, (a, b)),
+                        (a, b) => return self.any_fn.unwrap_or(|_, _| None)(scope, (a, b)),
                     }
                 }
                 _ => (),
@@ -109,7 +109,7 @@ impl BinaryOperation {
     }
 }
 
-type UnaryOpCallback<T> = fn(State, T) -> Option<(State, Token)>;
+type UnaryOpCallback<T> = fn(Scope, T) -> Option<(Scope, Token)>;
 
 #[derive(Clone)]
 pub struct UnaryOperation {
@@ -184,34 +184,34 @@ impl UnaryOperation {
         op
     }
 
-    pub fn exec(&self, state: State, arg: Token) -> Option<(State, Token)> {
+    pub fn exec(&self, scope: Scope, arg: Token) -> Option<(Scope, Token)> {
         if let Token::List(lst) = arg {
             match &lst[..] {
                 [op, Token::Variable(_, Some(x))] => {
                     return self
                         .clone()
-                        .exec(state, Token::List(vec![op.clone(), *x.clone()]))
+                        .exec(scope, Token::List(vec![op.clone(), *x.clone()]))
                 }
                 [_, x] => {
                     if self.any_fn != None {
-                        return self.any_fn.unwrap()(state, x.clone());
+                        return self.any_fn.unwrap()(scope, x.clone());
                     }
 
-                    let (state, inp) = state.exec(x.clone());
+                    let (scope, inp) = scope.exec(x.clone());
 
                     if self.executed_any_fn != None {
-                        return self.executed_any_fn.unwrap()(state, inp);
+                        return self.executed_any_fn.unwrap()(scope, inp);
                     }
 
                     match inp {
-                        Token::Number(a) => return self.number_fn.unwrap_or(|_, _| None)(state, a),
+                        Token::Number(a) => return self.number_fn.unwrap_or(|_, _| None)(scope, a),
                         Token::Boolean(a) => {
-                            return self.boolean_fn.unwrap_or(|_, _| None)(state, a)
+                            return self.boolean_fn.unwrap_or(|_, _| None)(scope, a)
                         }
-                        Token::Atom(a) => return self.atom_fn.unwrap_or(|_, _| None)(state, a),
-                        Token::String(a) => return self.string_fn.unwrap_or(|_, _| None)(state, a),
-                        Token::List(a) => return self.list_fn.unwrap_or(|_, _| None)(state, a),
-                        a => return self.any_fn.unwrap_or(|_, _| None)(state, a),
+                        Token::Atom(a) => return self.atom_fn.unwrap_or(|_, _| None)(scope, a),
+                        Token::String(a) => return self.string_fn.unwrap_or(|_, _| None)(scope, a),
+                        Token::List(a) => return self.list_fn.unwrap_or(|_, _| None)(scope, a),
+                        a => return self.any_fn.unwrap_or(|_, _| None)(scope, a),
                     }
                 }
                 _ => (),

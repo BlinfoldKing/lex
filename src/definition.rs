@@ -1,4 +1,4 @@
-use crate::ast::State;
+use crate::ast::Scope;
 use crate::grammar::token::Token;
 use crate::handler::Handler;
 
@@ -36,11 +36,11 @@ impl Definition {
         }
     }
 
-    pub fn handle(&self, state: State, inp: Token) -> (State, Token) {
+    pub fn handle(&self, scope: Scope, inp: Token) -> (Scope, Token) {
         let arg = Self::fill_variable(inp.clone(), self.inp_sig.clone());
         let func = &self.func;
 
-        let (state, out) = func(state, arg);
+        let (scope, out) = func(scope, arg);
 
         let res = Self::fill_variable(out.clone(), self.out_sig.clone());
 
@@ -48,14 +48,14 @@ impl Definition {
             Token::List(list) => match &list[..] {
                 [Token::Operator(op), _] => {
                     if op.clone() == "!".to_owned() || op.clone() == "?".to_owned() {
-                        (state, res)
+                        (scope, res)
                     } else {
-                        state.exec(res)
+                        scope.exec(res)
                     }
                 }
-                _ => state.exec(res),
+                _ => scope.exec(res),
             },
-            _ => state.exec(res),
+            _ => scope.exec(res),
         }
     }
 }

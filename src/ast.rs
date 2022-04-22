@@ -3,25 +3,33 @@ use crate::grammar::token::Token;
 use crate::modules::{core::Core, Import, Module};
 use crate::utils::trie::Trie;
 
+type State = Trie;
+type Return = Option<Token>;
+
 #[derive(Clone)]
-pub struct State(Trie);
-impl State {
+pub struct Scope(State, Return);
+impl Scope {
     pub fn new() -> Self {
-        Self(Trie::new())
+        Self(Trie::new(), None)
+    }
+
+    pub fn ret(&self, value: Token) -> Self {
+        let Self(state, _) = self;
+        Self(state.clone(), Some(value))
     }
 
     pub fn add(&self, token: Token, definition: Definition) -> Self {
-        let Self(node) = self;
+        let Self(node, ret) = self;
         let mut new = node.clone();
         match token {
             Token::List(l) => new.push(l, definition),
             t => new.push(vec![t], definition),
         }
-        Self(new)
+        Self(new, ret.clone())
     }
 
     pub fn query(&self, token: Token) -> Vec<Definition> {
-        let Self(node) = self;
+        let Self(node, _) = self;
 
         match token.clone() {
             Token::List(l) => node.find_all(l),
@@ -30,7 +38,7 @@ impl State {
     }
 
     pub fn find(&self, token: Token) -> Option<Definition> {
-        let Self(node) = self;
+        let Self(node, _) = self;
 
         let res = match token.clone() {
             Token::List(l) => node.find(l),
@@ -41,7 +49,11 @@ impl State {
     }
 
     pub fn exec(&self, token: Token) -> (Self, Token) {
-        let Self(node) = self;
+        let Self(node, ret) = self;
+        if let Some(ret) = ret {
+            return (self.clone(), ret.clone());
+        }
+
         let new = node.clone();
 
         let found = match token.clone() {
@@ -67,7 +79,7 @@ impl State {
     }
 
     fn debug_state(&self) -> Vec<(Token, Definition)> {
-        let Self(node) = self;
+        let Self(node, _) = self;
         let mut result = vec![];
 
         for key in node.keys() {
@@ -80,7 +92,7 @@ impl State {
     }
 }
 
-impl std::fmt::Debug for State {
+impl std::fmt::Debug for Scope {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{{\n").unwrap();
         for (key, def) in self.debug_state() {
@@ -90,8 +102,8 @@ impl std::fmt::Debug for State {
     }
 }
 
-pub fn init() -> State {
-    let mut r = State::new();
+pub fn init() -> Scope {
+    let mut r = Scope::new();
     r = r.load_module(Core {});
     r = r.load_module(Import {});
     r
@@ -133,7 +145,7 @@ fn should_be_able_to_declare() {
 mod test_find {
     use super::*;
 
-    fn setup() -> State {
+    fn setup() -> Scope {
         let r = init();
         let (r1, _) = r.exec(Token::List(vec![
             Token::Keyword("dec".to_owned()),

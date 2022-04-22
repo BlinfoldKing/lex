@@ -1,4 +1,4 @@
-use crate::ast::State;
+use crate::ast::Scope;
 use crate::definition::Definition;
 use crate::grammar::token::Token;
 use crate::utils::operation::UnaryOperation;
@@ -23,7 +23,7 @@ impl Import {
         res
     }
 
-    fn import(state: State, arg: Token) -> (State, Token) {
+    fn import(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = UnaryOperation::new().for_string(|s, str| {
             // TODO: can be quite costly to do this too often
             let m = Self::modules();
@@ -42,9 +42,9 @@ impl Import {
             }
         });
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 }

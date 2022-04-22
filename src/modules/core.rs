@@ -1,5 +1,5 @@
 use super::Module;
-use crate::ast::State;
+use crate::ast::Scope;
 use crate::definition::Definition;
 use crate::grammar::token::Token;
 use crate::utils::operation::{BinaryOperation, UnaryOperation};
@@ -15,7 +15,7 @@ impl Module for Core {
                 inp_sig: Token::List(vec![Token::Keyword("debug".to_owned())]),
                 out_sig: Token::Value,
                 res_sig: Token::Value,
-                func: Arc::new(Self::debug_state),
+                func: Arc::new(Self::debug_scope),
             },
             Definition {
                 inp_sig: Token::Document(Box::new(Token::Value), Box::new(Token::Value)),
@@ -151,52 +151,58 @@ impl Module for Core {
                 res_sig: Token::Value,
                 func: Arc::new(Self::find),
             },
+            Definition {
+                inp_sig: Token::List(vec![Token::Keyword("return".to_owned()), Token::Value]),
+                out_sig: Token::Value,
+                res_sig: Token::Value,
+                func: Arc::new(Self::ret),
+            },
         ]
     }
 }
 
 impl Core {
-    fn eq(state: State, arg: Token) -> (State, Token) {
+    fn eq(scope: Scope, arg: Token) -> (Scope, Token) {
         let op =
-            BinaryOperation::new().for_any(|state, (a, b)| Some((state, Token::Boolean(a == b))));
+            BinaryOperation::new().for_any(|scope, (a, b)| Some((scope, Token::Boolean(a == b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn add(state: State, arg: Token) -> (State, Token) {
+    fn add(scope: Scope, arg: Token) -> (Scope, Token) {
         let op =
-            BinaryOperation::new().for_number(|state, (a, b)| Some((state, Token::Number(a + b))));
+            BinaryOperation::new().for_number(|scope, (a, b)| Some((scope, Token::Number(a + b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn min(state: State, arg: Token) -> (State, Token) {
+    fn min(scope: Scope, arg: Token) -> (Scope, Token) {
         let op =
-            BinaryOperation::new().for_number(|state, (a, b)| Some((state, Token::Number(a - b))));
+            BinaryOperation::new().for_number(|scope, (a, b)| Some((scope, Token::Number(a - b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn times(state: State, arg: Token) -> (State, Token) {
+    fn times(scope: Scope, arg: Token) -> (Scope, Token) {
         let op =
-            BinaryOperation::new().for_number(|state, (a, b)| Some((state, Token::Number(a * b))));
+            BinaryOperation::new().for_number(|scope, (a, b)| Some((scope, Token::Number(a * b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn dec(state: State, arg: Token) -> (State, Token) {
+    fn dec(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = UnaryOperation::new().for_any(|s, token| {
             let def = Definition {
                 inp_sig: token.clone(),
@@ -210,13 +216,13 @@ impl Core {
             Some((r, Token::Boolean(true)))
         });
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn def(state: State, arg: Token) -> (State, Token) {
+    fn def(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = BinaryOperation::new().for_any(|s, (pattern, condition)| {
             let def = Definition {
                 inp_sig: pattern.clone(),
@@ -232,20 +238,20 @@ impl Core {
             // println!("pattern: {:?}", pattern.clone());
             // println!("condition: {:?}", condition.clone());
 
-            // println!("\nstate:\n {:?}\n", r);
+            // println!("\nscope:\n {:?}\n", r);
             Some((r, Token::Boolean(true)))
         });
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn def_handler(state: State, arg: Token) -> (State, Token) {
-        let def = state.find(arg.clone()).unwrap();
+    fn def_handler(scope: Scope, arg: Token) -> (Scope, Token) {
+        let def = scope.find(arg.clone()).unwrap();
         let res = Self::construct_input(arg.clone(), def.clone().out_sig);
-        (state, res)
+        (scope, res)
     }
 
     fn construct_input(source: Token, target: Token) -> Token {
@@ -297,64 +303,50 @@ impl Core {
         res
     }
 
-    fn query(state: State, arg: Token) -> (State, Token) {
+    fn query(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = UnaryOperation::new().for_any(|s, token| {
             let res = s.query(token.clone());
-            if res.len() < 1 {
-                return Some((s, token));
-            };
 
             let mut list: Vec<Token> = vec![];
             let mut s = s.clone();
             for def in res {
-                let inp = Definition::fill_variable(token.clone(), def.inp_sig.clone());
-                let vars = Self::get_variables(inp);
-                let cond_sig = Self::inject_variables(def.out_sig.clone(), vars.clone());
+                let args = Self::get_variables(Definition::fill_variable(
+                    token.clone(),
+                    def.inp_sig.clone(),
+                ));
 
-                let (r, found) = s.exec(Token::List(vec![
-                    Token::Operator("?".to_owned()),
-                    cond_sig.clone(),
-                ]));
-                let (r, cond) = r.exec(found.clone());
+                match def.out_sig.clone() {
+                    Token::Value => {}
+                    out => {
+                        let inp = Self::inject_variables(out.clone(), args.clone());
 
-                match cond {
-                    Token::Boolean(true) => {
-                        let child = Definition::fill_variable(found.clone(), cond_sig.clone());
-                        let value_vars = Self::get_variables(child);
-                        let item = Self::inject_variables(
-                            Self::inject_variables(def.res_sig, vars),
-                            value_vars,
-                        );
+                        let (r, t) = s.exec(Token::List(vec![
+                            Token::Operator("?".to_owned()),
+                            inp.clone(),
+                        ]));
 
-                        list.push(item);
+                        let t = Definition::fill_variable(t, inp);
+                        let vars = Self::get_variables(t);
+
+                        let res = Self::inject_variables(def.res_sig, args);
+                        let res = Self::inject_variables(res, vars);
+
+                        list.push(res);
+                        s = r;
                     }
-                    Token::List(founds) => {
-                        for found in founds {
-                            let child = Definition::fill_variable(found.clone(), cond_sig.clone());
-                            let value_vars = Self::get_variables(child);
-                            let item = Self::inject_variables(
-                                Self::inject_variables(def.res_sig.clone(), vars.clone()),
-                                value_vars,
-                            );
-
-                            list.push(item);
-                        }
-                    }
-                    _ => (),
-                }
-                s = r;
+                };
             }
 
             Some((s, Token::List(list)))
         });
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn find(state: State, arg: Token) -> (State, Token) {
+    fn find(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = UnaryOperation::new().for_any(|s, token| {
             let def = s.find(token.clone());
             match def {
@@ -403,9 +395,9 @@ impl Core {
             }
         });
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
@@ -452,64 +444,64 @@ impl Core {
         }
     }
 
-    fn div_int(state: State, arg: Token) -> (State, Token) {
+    fn div_int(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = BinaryOperation::new()
-            .for_number(|state, (a, b)| Some((state, Token::Number((a as i64 / b as i64) as f64))));
+            .for_number(|scope, (a, b)| Some((scope, Token::Number((a as i64 / b as i64) as f64))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn div_float(state: State, arg: Token) -> (State, Token) {
+    fn div_float(scope: Scope, arg: Token) -> (Scope, Token) {
         let op =
-            BinaryOperation::new().for_number(|state, (a, b)| Some((state, Token::Number(a / b))));
+            BinaryOperation::new().for_number(|scope, (a, b)| Some((scope, Token::Number(a / b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn mod_(state: State, arg: Token) -> (State, Token) {
+    fn mod_(scope: Scope, arg: Token) -> (Scope, Token) {
         let op =
-            BinaryOperation::new().for_number(|state, (a, b)| Some((state, Token::Number(a % b))));
+            BinaryOperation::new().for_number(|scope, (a, b)| Some((scope, Token::Number(a % b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn and(state: State, arg: Token) -> (State, Token) {
+    fn and(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = BinaryOperation::new()
-            .for_boolean(|state, (a, b)| Some((state, Token::Boolean(a && b))));
+            .for_boolean(|scope, (a, b)| Some((scope, Token::Boolean(a && b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn or(state: State, arg: Token) -> (State, Token) {
+    fn or(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = BinaryOperation::new()
-            .for_boolean(|state, (a, b)| Some((state, Token::Boolean(a || b))));
+            .for_boolean(|scope, (a, b)| Some((scope, Token::Boolean(a || b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn do_(state: State, arg: Token) -> (State, Token) {
+    fn do_(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = UnaryOperation::new()
-            .for_list(|state, list| {
-                let mut state = state.clone();
+            .for_list(|scope, list| {
+                let mut scope = scope.clone();
                 let mut items: Vec<Token> = vec![];
                 for item in list {
-                    let (s, val) = state.exec(item.clone());
-                    state = s;
+                    let (s, val) = scope.exec(item.clone());
+                    scope = s;
                     items.push(val);
                 }
 
@@ -518,35 +510,45 @@ impl Core {
                     _ => false,
                 });
 
-                Some((state, Token::Boolean(ret)))
+                Some((scope, Token::Boolean(ret)))
             })
-            .for_boolean(|state, b| Some((state, Token::Boolean(b))));
+            .for_boolean(|scope, b| Some((scope, Token::Boolean(b))));
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 
-    fn document(state: State, arg: Token) -> (State, Token) {
+    fn document(scope: Scope, arg: Token) -> (Scope, Token) {
         if let Token::Document(_, token) = arg {
-            let res = state.exec(Token::List(vec![
+            let res = scope.exec(Token::List(vec![
                 Token::Keyword("do".to_owned()),
                 *token.clone(),
             ]));
             return res;
         }
 
-        (state, Token::Boolean(false))
+        (scope, Token::Boolean(false))
     }
 
-    fn debug_state(state: State, _: Token) -> (State, Token) {
-        println!("{:?}", state);
+    fn debug_scope(scope: Scope, _: Token) -> (Scope, Token) {
+        println!("{:?}", scope);
 
-        (state, Token::Boolean(true))
+        (scope, Token::Boolean(true))
     }
 
-    fn true_handler(state: State, _: Token) -> (State, Token) {
-        (state, Token::Boolean(true))
+    fn true_handler(scope: Scope, _: Token) -> (Scope, Token) {
+        (scope, Token::Boolean(true))
+    }
+
+    fn ret(scope: Scope, arg: Token) -> (Scope, Token) {
+        let op = UnaryOperation::new()
+            .for_executed_any(|scope, val| Some((scope.ret(val.clone()), val)));
+
+        match op.exec(scope.clone(), arg) {
+            Some(val) => val,
+            _ => (scope, Token::Boolean(false)),
+        }
     }
 }

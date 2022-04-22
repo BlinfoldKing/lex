@@ -1,5 +1,5 @@
 use super::Module;
-use crate::ast::State;
+use crate::ast::Scope;
 use crate::definition::Definition;
 use crate::grammar::token::Token;
 use crate::utils::operation::UnaryOperation;
@@ -19,16 +19,16 @@ impl Module for Fmt {
 }
 
 impl Fmt {
-    fn println(state: State, arg: Token) -> (State, Token) {
+    fn println(scope: Scope, arg: Token) -> (Scope, Token) {
         let op = UnaryOperation::new().for_executed_any(|s, token| {
             println!("{}", token.clone());
 
             Some((s, token))
         });
 
-        match op.exec(state.clone(), arg) {
+        match op.exec(scope.clone(), arg) {
             Some(val) => val,
-            _ => (state, Token::Boolean(false)),
+            _ => (scope, Token::Boolean(false)),
         }
     }
 }
