@@ -1,15 +1,25 @@
 use super::token::Token;
-use nom::{
-    bytes::complete::{is_a, tag},
-    sequence::pair,
-    IResult,
-};
+use nom::{branch::alt, bytes::complete::tag, sequence::pair, IResult};
 
-pub fn keyword(input: &str) -> IResult<&str, Token, ()> {
-    let (input, (_, value)) = pair(
-        tag("."),
-        is_a("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"),
-    )(input)?;
+pub fn keyword<'a>(word: &'a str) -> impl Fn(&'a str) -> IResult<&'a str, Token, ()> {
+    move |input: &str| {
+        let (input, (_, value)) = pair(tag("@"), tag(word))(input)?;
 
-    Ok((&input, Token::Keyword(value.to_owned())))
+        Ok((&input, Token::Keyword(value.to_owned())))
+    }
+}
+
+pub fn valid_keyword(input: &str) -> IResult<&str, Token, ()> {
+    let res = alt((
+        keyword("include"),
+        keyword("return"),
+        keyword("def"),
+        keyword("dec"),
+        keyword("do"),
+        keyword("and"),
+        keyword("or"),
+        keyword("div"),
+    ))(input)?;
+
+    Ok(res)
 }

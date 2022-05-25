@@ -1,62 +1,24 @@
-use crate::ast::Scope;
 use crate::grammar::token::Token;
 use crate::handler::Handler;
+use crate::state::State;
+use crate::utils::variables;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Definition {
     pub inp_sig: Token,
     pub out_sig: Token,
     pub res_sig: Token,
-    pub func: Handler,
+    pub func: Arc<Box<Handler>>,
 }
 
 impl Definition {
-    pub fn fill_variable(source: Token, target: Token) -> Token {
-        match (source, target.clone()) {
-            (x, Token::Value) => x,
-            (Token::Document(doc, a), Token::Document(_, b)) => {
-                Token::Document(doc, Box::new(Self::fill_variable(*a.clone(), *b.clone())))
-            }
-            (Token::List(list1), Token::List(list2)) => {
-                let res = list1
-                    .into_iter()
-                    .zip(list2.into_iter())
-                    .map(|(a, b)| Self::fill_variable(a, b))
-                    .collect();
-                Token::List(res)
-            }
-            (Token::Variable(var, Some(a)), Token::Variable(_, None)) => {
-                Token::Variable(var, Some(a))
-            }
-            (Token::Variable(x, None), Token::Variable(y, None)) => {
-                Token::Variable(y, Some(Box::new(Token::Variable(x, None))))
-            }
-            (a, Token::Variable(var, None)) => Token::Variable(var, Some(Box::new(a))),
-            _ => target,
-        }
-    }
-
-    pub fn handle(&self, scope: Scope, inp: Token) -> (Scope, Token) {
-        let arg = Self::fill_variable(inp.clone(), self.inp_sig.clone());
+    pub fn handle(&self, state: &mut State, inp: Token) -> Token {
+        let arg = variables::fill_variable(inp.clone(), self.inp_sig.clone());
         let func = &self.func;
 
-        let (scope, out) = func(scope, arg);
-
-        let res = Self::fill_variable(out.clone(), self.out_sig.clone());
-
-        match inp {
-            Token::List(list) => match &list[..] {
-                [Token::Operator(op), _] => {
-                    if op.clone() == "!".to_owned() || op.clone() == "?".to_owned() {
-                        (scope, res)
-                    } else {
-                        scope.exec(res)
-                    }
-                }
-                _ => scope.exec(res),
-            },
-            _ => scope.exec(res),
-        }
+        let out = func(state, arg);
+        out
     }
 }
 

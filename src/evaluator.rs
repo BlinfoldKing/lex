@@ -1,14 +1,20 @@
-use crate::ast::{init, Scope};
 use crate::grammar::token::Token;
 use crate::grammar::{document, repl_line};
+use crate::state::State;
 
 pub struct Engine {
-    scope: Scope,
+    state: State,
 }
 
 impl Engine {
     pub fn new() -> Self {
-        Self { scope: init() }
+        let mut res = Self {
+            state: State::new(),
+        };
+
+        res.state.load(crate::stdlib::Std);
+
+        res
     }
 
     pub fn parse(&mut self, input: &str) -> Result<Token, ()> {
@@ -20,9 +26,11 @@ impl Engine {
             Ok((_, token)) => document = token,
         };
 
-        let (scope, result) = self.scope.exec(document);
+        let result = self.state.exec(document);
+        if let Some(value) = self.state.return_value() {
+            return Ok(value);
+        }
 
-        self.scope = scope;
         Ok(result)
     }
 
@@ -35,9 +43,8 @@ impl Engine {
             Ok((_, token)) => document = token,
         };
 
-        let (scope, result) = self.scope.exec(document);
+        let result = self.state.exec(document);
 
-        self.scope = scope;
         Ok(result)
     }
 }

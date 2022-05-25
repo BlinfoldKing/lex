@@ -1,13 +1,6 @@
-use super::atom::atom;
-use super::boolean::boolean;
 use super::keyword::keyword;
-use super::number::number;
-use super::operator::operator;
-use super::string::string;
-use super::token::Token;
-use super::variable::variable;
+use super::token::{token, Token};
 use super::whitespace::whitespace;
-use super::wildcard::wildcard;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -15,6 +8,18 @@ use nom::{
     sequence::tuple,
     Err, IResult,
 };
+
+pub fn l_parent(input: &str) -> IResult<&str, Token, ()> {
+    let (input, _) = tag("(")(input)?;
+
+    Ok((input, Token::LParent))
+}
+
+pub fn r_parent(input: &str) -> IResult<&str, Token, ()> {
+    let (input, _) = tag(")")(input)?;
+
+    Ok((input, Token::RParent))
+}
 
 pub fn list(input: &str) -> IResult<&str, Token, ()> {
     if input.len() < 2 {
@@ -26,20 +31,25 @@ pub fn list(input: &str) -> IResult<&str, Token, ()> {
         return Ok((&input, Token::List(vec![])));
     }
 
-    let element = separated_list1(
-        many1(whitespace),
-        alt((
-            boolean, string, variable, atom, keyword, list, number, operator, variable, wildcard,
-        )),
-    );
-
-    let (input, (_, _, value, _, _)) = tuple((
-        tag("("),
+    let element = separated_list1(many1(whitespace), token);
+    let with_parent = tuple((
+        l_parent,
         many0(whitespace),
         element,
         many0(whitespace),
-        tag(")"),
-    ))(input)?;
+        r_parent,
+    ));
+
+    let element1 = separated_list1(many1(whitespace), token);
+    let with_keyword = tuple((
+        keyword("begin"),
+        many0(whitespace),
+        element1,
+        many0(whitespace),
+        keyword("end"),
+    ));
+
+    let (input, (_, _, value, _, _)) = alt((with_parent, with_keyword))(input)?;
 
     // ignore comment
     let result: Vec<Token> = value
@@ -48,5 +58,24 @@ pub fn list(input: &str) -> IResult<&str, Token, ()> {
         .filter(|e| *e != Token::Comment)
         .collect();
 
-    Ok((&input, Token::List(result)))
+    // check for list variant
+    let res = match &result[..] {
+        [Token::Keyword(key), a, b] => {
+            if key == "def" {
+                Token::Definition(Box::new(a.clone()), Box::new(b.clone()))
+            } else {
+                Token::List(result)
+            }
+        }
+        [Token::Keyword(key), a] => {
+            if key == "dec" {
+                Token::Definition(Box::new(a.clone()), Box::new(Token::_true()))
+            } else {
+                Token::List(result)
+            }
+        }
+        _ => Token::List(result),
+    };
+
+    Ok((&input, res))
 }

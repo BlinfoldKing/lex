@@ -1,5 +1,10 @@
-use crate::ast::Scope;
 use crate::grammar::token::Token;
-use std::sync::Arc;
+use crate::state::State;
 
-pub type Handler = Arc<dyn Fn(Scope, Token) -> (Scope, Token) + Send + Sync>;
+pub type Handler = dyn Fn(&mut State, Token) -> Token;
+
+// impl Handler {
+//     pub fn new(func: fn(&State, Token) -> Token) -> Self {
+//         Self { func }
+//     }
+// }

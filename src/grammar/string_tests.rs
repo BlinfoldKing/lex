@@ -22,6 +22,15 @@ fn should_be_valid_single_quoted_string() {
 }
 
 #[test]
+fn should_be_valid_empty_string() {
+    let input = "\'\'";
+
+    let res = string(input);
+
+    assert_eq!(Ok(("", Token::String("".to_owned()))), res)
+}
+
+#[test]
 fn error_on_missing_quote() {
     let input = "\"hello world";
 

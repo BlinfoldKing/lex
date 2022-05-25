@@ -10,10 +10,11 @@ pub mod boolean;
 pub mod boolean_tests;
 pub mod comment;
 pub mod comment_tests;
+pub mod identifier;
+pub mod identifier_tests;
 pub mod inline_comment;
 pub mod inline_comment_tests;
 pub mod keyword;
-pub mod keyword_tests;
 pub mod list;
 pub mod list_tests;
 pub mod number;
@@ -30,6 +31,7 @@ pub mod wildcard_tests;
 
 use atom::atom;
 use boolean::boolean;
+use identifier::identifier;
 use keyword::keyword;
 use list::list;
 use nom::{
@@ -48,7 +50,7 @@ use wildcard::wildcard;
 
 pub fn repl_line(input: &str) -> IResult<&str, Token, ()> {
     let value = alt((
-        boolean, string, atom, keyword, list, number, operator, variable, wildcard,
+        boolean, string, atom, identifier, list, number, operator, variable, wildcard,
     ));
     let (inp, (_, value, _)) = tuple((many0(whitespace), value, many0(whitespace)))(input)?;
 
@@ -70,31 +72,26 @@ pub fn document(input: &str) -> IResult<&str, Token, ()> {
     let list = many1(alt((
         comment::comment,
         inline_comment::inline_comment,
-        list::list,
+        token::token,
         whitespace::whitespace,
     )));
 
-    let (input, (_, kw, _, name, value)) = tuple((
+    let (input, (_, _, _, name, value)) = tuple((
         many0(ignore1),
-        keyword::keyword,
+        keyword("document"),
         many0(ignore2),
         alt((string::string, atom::atom)),
         list,
     ))(input)?;
 
-    if kw != Token::Keyword("document".to_owned()) {}
+    let value: Vec<Token> = value
+        .into_iter()
+        .filter(|token| *token != Token::Whitespace && *token != Token::Comment)
+        .collect();
 
     Ok((
         input,
-        Token::Document(
-            Box::new(name),
-            Box::new(Token::List(
-                value
-                    .into_iter()
-                    .filter(|token| *token != Token::Whitespace && *token != Token::Comment)
-                    .collect(),
-            )),
-        ),
+        Token::Document(Box::new(name), Box::new(Token::List(value))),
     ))
 }
 
@@ -102,7 +99,7 @@ pub fn document(input: &str) -> IResult<&str, Token, ()> {
 fn should_be_able_to_parse_document() {
     let doc = r#"
 //some comment
-.document "hello_world"
+@document "hello_world"
 //some comment
 (hello world)
 //some comment

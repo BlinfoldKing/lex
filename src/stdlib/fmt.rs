@@ -1,7 +1,7 @@
 use super::Module;
-use crate::ast::Scope;
 use crate::definition::Definition;
 use crate::grammar::token::Token;
+use crate::state::State;
 use crate::utils::operation::UnaryOperation;
 use std::sync::Arc;
 
@@ -10,25 +10,26 @@ pub struct Fmt;
 impl Module for Fmt {
     fn load(&self) -> Vec<Definition> {
         vec![Definition {
-            inp_sig: Token::List(vec![Token::Keyword("println".to_owned()), Token::Value]),
+            inp_sig: Token::List(vec![Token::Identifier("println".to_owned()), Token::Value]),
             out_sig: Token::Value,
             res_sig: Token::Value,
-            func: Arc::new(Self::println),
+            func: Arc::new(Box::new(Self::println)),
         }]
     }
 }
 
 impl Fmt {
-    fn println(scope: Scope, arg: Token) -> (Scope, Token) {
-        let op = UnaryOperation::new().for_executed_any(|s, token| {
+    fn println(state: &mut State, arg: Token) -> Token {
+        let mut op = UnaryOperation::new();
+        op.for_executed_any(Box::new(|_, token| {
             println!("{}", token.clone());
 
-            Some((s, token))
-        });
+            Some(token)
+        }));
 
-        match op.exec(scope.clone(), arg) {
+        match op.exec(state, arg) {
             Some(val) => val,
-            _ => (scope, Token::Boolean(false)),
+            _ => Token::_false(),
         }
     }
 }

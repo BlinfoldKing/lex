@@ -1,0 +1,57 @@
+@document test
+
+(@include "fmt")
+
+(.println "hello world")
+
+/* @begin .println "hello world" @end */
+
+/* @begin @def (.greet Name) */
+/*     (.println Name) */
+/* @end */
+
+/* (.greet world) */
+
+/* (.println (+ 1 1)) */
+
+
+
+(@dec (a .to b))
+(@dec (a .to e))
+(@dec (b .to c))
+(@dec (c .to d))
+
+(@dec (x .to y))
+(@dec (x .to z))
+
+(@def (X .to Y) false)
+
+@begin
+    .println
+    (a .to b)
+@end
+
+@begin
+    .println
+    (a. to _Somewhere)
+@end
+
+@begin
+    .println
+    (! (a .to _Somewhere))
+@end
+
+@begin
+    .println
+    (? (a .to _Somewhere))
+@end
+
+@begin @func (.main) 
+    @begin
+        (.println "hello world")
+        (@return true)
+    @end
+@end
+
+(.select (ID name) where: (= ID 10))
+

@@ -1,6 +1,0 @@
-.document hello_world
-
-(.include "fmt")
-
-(.println (hello world))
-

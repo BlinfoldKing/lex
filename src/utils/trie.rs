@@ -4,7 +4,7 @@ use crate::grammar::token::Token;
 #[derive(Debug, Clone)]
 pub struct Node {
     value: Option<Token>,
-    data: Option<Definition>,
+    pub data: Vec<Definition>,
     pub children: Vec<Box<Node>>,
 }
 
@@ -12,7 +12,7 @@ impl Node {
     pub fn new() -> Self {
         Self {
             value: None,
-            data: None,
+            data: vec![],
             children: vec![],
         }
     }
@@ -27,7 +27,7 @@ impl Node {
     pub fn with_data(&self, data: Definition) -> Self {
         let mut res = self.clone();
 
-        res.data = Some(data);
+        res.data.push(data);
         res
     }
 
@@ -40,13 +40,7 @@ impl Node {
         let tail = nodes[1..].to_vec();
 
         for (i, child) in self.children.iter().enumerate() {
-            if child.value != None
-                && child
-                    .value
-                    .clone()
-                    .unwrap()
-                    .exact_eq(&head.clone().value.unwrap())
-            {
+            if child.value != None && child.value.clone().unwrap() == head.clone().value.unwrap() {
                 self.children[i].push(tail);
                 return;
             }
@@ -56,7 +50,7 @@ impl Node {
         self.children.push(Box::new(head.clone()));
     }
 
-    pub fn find_all(&self, list: Vec<Token>) -> Vec<Definition> {
+    pub fn find_all(&self, list: Vec<Token>) -> Vec<Node> {
         if list.len() < 1 {
             return vec![];
         }
@@ -71,9 +65,7 @@ impl Node {
                     let tail = list[1..].to_vec();
                     res.extend(child.find_all(tail))
                 } else {
-                    if let Some(data) = &child.data {
-                        res.push(data.clone())
-                    }
+                    res.push(*child.clone())
                 }
             }
         }
@@ -81,7 +73,7 @@ impl Node {
         res
     }
 
-    pub fn find(&self, list: Vec<Token>) -> Option<Definition> {
+    pub fn find(&self, list: Vec<Token>) -> Option<Node> {
         if list.len() < 1 {
             return None;
         }
@@ -96,9 +88,7 @@ impl Node {
                         res => return res,
                     }
                 } else {
-                    if let Some(data) = &child.data {
-                        return Some(data.clone());
-                    }
+                    return Some(*child.clone());
                 }
             }
         }
@@ -163,6 +153,7 @@ impl Trie {
     }
 
     pub fn push(&mut self, list: Vec<Token>, data: Definition) {
+        let found = self.find(list.clone());
         let nodes: Vec<Node> = list
             .clone()
             .into_iter()
@@ -170,7 +161,11 @@ impl Trie {
             .map(move |(i, item)| {
                 let mut node = Node::new().with_value(item);
                 if i == list.len() - 1 {
-                    node = node.with_data(data.clone())
+                    if let Some(f) = &found {
+                        node = f.with_data(data.clone());
+                    } else {
+                        node = node.with_data(data.clone())
+                    }
                 }
                 node
             })
@@ -178,11 +173,11 @@ impl Trie {
         self.root.push(nodes);
     }
 
-    pub fn find(&self, list: Vec<Token>) -> Option<Definition> {
+    pub fn find(&self, list: Vec<Token>) -> Option<Node> {
         self.root.find(list)
     }
 
-    pub fn find_all(&self, list: Vec<Token>) -> Vec<Definition> {
+    pub fn find_all(&self, list: Vec<Token>) -> Vec<Node> {
         self.root.find_all(list)
     }
 

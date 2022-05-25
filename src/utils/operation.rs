@@ -1,9 +1,8 @@
-use crate::ast::Scope;
 use crate::grammar::token::Token;
+use crate::state::State;
 
-type BinaryOpCallback<T> = fn(Scope, (T, T)) -> Option<(Scope, Token)>;
+type BinaryOpCallback<T> = Box<dyn Fn(&mut State, (T, T)) -> Option<Token>>;
 
-#[derive(Clone)]
 pub struct BinaryOperation {
     number_fn: Option<BinaryOpCallback<f64>>,
     boolean_fn: Option<BinaryOpCallback<bool>>,
@@ -25,82 +24,90 @@ impl BinaryOperation {
         }
     }
 
-    pub fn for_number(&self, func: BinaryOpCallback<f64>) -> Self {
-        let mut op = self.clone();
-        op.number_fn = Some(func);
+    pub fn for_number(&mut self, func: BinaryOpCallback<f64>) -> &mut Self {
+        self.number_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_boolean(&self, func: BinaryOpCallback<bool>) -> Self {
-        let mut op = self.clone();
-        op.boolean_fn = Some(func);
+    pub fn for_boolean(&mut self, func: BinaryOpCallback<bool>) -> &mut Self {
+        self.boolean_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_atom(&self, func: BinaryOpCallback<String>) -> Self {
-        let mut op = self.clone();
-        op.atom_fn = Some(func);
+    pub fn for_atom(&mut self, func: BinaryOpCallback<String>) -> &mut Self {
+        self.atom_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_string(&self, func: BinaryOpCallback<String>) -> Self {
-        let mut op = self.clone();
-        op.string_fn = Some(func);
+    pub fn for_string(&mut self, func: BinaryOpCallback<String>) -> &mut Self {
+        self.string_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_list(&self, func: BinaryOpCallback<Vec<Token>>) -> Self {
-        let mut op = self.clone();
-        op.list_fn = Some(func);
+    pub fn for_list(&mut self, func: BinaryOpCallback<Vec<Token>>) -> &mut Self {
+        self.list_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_any(&self, func: BinaryOpCallback<Token>) -> Self {
-        let mut op = self.clone();
-        op.any_fn = Some(func);
+    pub fn for_any(&mut self, func: BinaryOpCallback<Token>) -> &mut Self {
+        self.any_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn exec(&self, scope: Scope, arg: Token) -> Option<(Scope, Token)> {
+    pub fn exec(&mut self, state: &mut State, arg: Token) -> Option<Token> {
         if let Token::List(lst) = arg {
             match &lst[..] {
-                [op, Token::Variable(_, Some(a)), Token::Variable(_, Some(b))] => {
-                    return self
-                        .clone()
-                        .exec(scope, Token::List(vec![op.clone(), *a.clone(), *b.clone()]))
-                }
+                // [op, Token::Variable(_, Some(a)), Token::Variable(_, Some(b))] => {
+                //     return self.exec(state, Token::List(vec![op.clone(), *a.clone(), *b.clone()]))
+                // }
                 [_, x, y] => {
-                    if self.any_fn != None {
-                        return self.any_fn.unwrap()(scope, (x.clone(), y.clone()));
+                    if let Some(func) = &self.any_fn {
+                        return func(state, (x.clone(), y.clone()));
                     }
 
-                    let (scope, x) = scope.exec(x.clone());
-                    let (scope, y) = scope.exec(y.clone());
+                    let x = state.exec(x.clone());
+                    let y = state.exec(y.clone());
 
                     match (x, y) {
                         (Token::Number(a), Token::Number(b)) => {
-                            return self.number_fn.unwrap_or(|_, _| None)(scope, (a, b))
+                            if let Some(func) = &self.number_fn {
+                                return func(state, (a, b));
+                            }
                         }
                         (Token::Boolean(a), Token::Boolean(b)) => {
-                            return self.boolean_fn.unwrap_or(|_, _| None)(scope, (a, b))
+                            if let Some(func) = &self.boolean_fn {
+                                return func(state, (a, b));
+                            }
                         }
                         (Token::Atom(a), Token::Atom(b)) => {
-                            return self.atom_fn.unwrap_or(|_, _| None)(scope, (a, b))
+                            if let Some(func) = &self.atom_fn {
+                                return func(state, (a, b));
+                            }
                         }
                         (Token::String(a), Token::String(b)) => {
-                            return self.string_fn.unwrap_or(|_, _| None)(scope, (a, b))
+                            if let Some(func) = &self.string_fn {
+                                return func(state, (a, b));
+                            }
                         }
                         (Token::List(a), Token::List(b)) => {
-                            return self.list_fn.unwrap_or(|_, _| None)(scope, (a, b))
+                            if let Some(func) = &self.list_fn {
+                                return func(state, (a, b));
+                            }
                         }
-                        (a, b) => return self.any_fn.unwrap_or(|_, _| None)(scope, (a, b)),
-                    }
+                        (a, b) => {
+                            if let Some(func) = &self.any_fn {
+                                return func(state, (a, b));
+                            }
+                        }
+                    };
+
+                    return None;
                 }
                 _ => (),
             }
@@ -109,9 +116,8 @@ impl BinaryOperation {
     }
 }
 
-type UnaryOpCallback<T> = fn(Scope, T) -> Option<(Scope, Token)>;
+type UnaryOpCallback<T> = Box<dyn Fn(&mut State, T) -> Option<Token>>;
 
-#[derive(Clone)]
 pub struct UnaryOperation {
     number_fn: Option<UnaryOpCallback<f64>>,
     boolean_fn: Option<UnaryOpCallback<bool>>,
@@ -135,84 +141,100 @@ impl UnaryOperation {
         }
     }
 
-    pub fn for_number(&self, func: UnaryOpCallback<f64>) -> Self {
-        let mut op = self.clone();
-        op.number_fn = Some(func);
+    pub fn for_number(&mut self, func: UnaryOpCallback<f64>) -> &mut Self {
+        self.number_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_boolean(&self, func: UnaryOpCallback<bool>) -> Self {
-        let mut op = self.clone();
-        op.boolean_fn = Some(func);
+    pub fn for_boolean(&mut self, func: UnaryOpCallback<bool>) -> &Self {
+        self.boolean_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_atom(&self, func: UnaryOpCallback<String>) -> Self {
-        let mut op = self.clone();
-        op.atom_fn = Some(func);
+    pub fn for_atom(&mut self, func: UnaryOpCallback<String>) -> &Self {
+        self.atom_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_string(&self, func: UnaryOpCallback<String>) -> Self {
-        let mut op = self.clone();
-        op.string_fn = Some(func);
+    pub fn for_string(&mut self, func: UnaryOpCallback<String>) -> &Self {
+        self.string_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_list(&self, func: UnaryOpCallback<Vec<Token>>) -> Self {
-        let mut op = self.clone();
-        op.list_fn = Some(func);
+    pub fn for_list(&mut self, func: UnaryOpCallback<Vec<Token>>) -> &Self {
+        self.list_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_any(&self, func: UnaryOpCallback<Token>) -> Self {
-        let mut op = self.clone();
-        op.any_fn = Some(func);
+    pub fn for_any(&mut self, func: UnaryOpCallback<Token>) -> &Self {
+        self.any_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn for_executed_any(&self, func: UnaryOpCallback<Token>) -> Self {
-        let mut op = self.clone();
-        op.executed_any_fn = Some(func);
+    pub fn for_executed_any(&mut self, func: UnaryOpCallback<Token>) -> &Self {
+        self.executed_any_fn = Some(func);
 
-        op
+        self
     }
 
-    pub fn exec(&self, scope: Scope, arg: Token) -> Option<(Scope, Token)> {
+    pub fn exec(&self, state: &mut State, arg: Token) -> Option<Token> {
         if let Token::List(lst) = arg {
             match &lst[..] {
-                [op, Token::Variable(_, Some(x))] => {
-                    return self
-                        .clone()
-                        .exec(scope, Token::List(vec![op.clone(), *x.clone()]))
-                }
+                // [op, Token::Variable(_, Some(x))] => {
+                //     x.values().iter().map
+                //     return self.exec(state, Token::List(vec![op.clone(), x.clone()]))
+                // }
                 [_, x] => {
-                    if self.any_fn != None {
-                        return self.any_fn.unwrap()(scope, x.clone());
+                    let inp = state.exec(x.clone());
+
+                    if let Some(func) = &self.any_fn {
+                        return func(state, x.clone());
                     }
 
-                    let (scope, inp) = scope.exec(x.clone());
-
-                    if self.executed_any_fn != None {
-                        return self.executed_any_fn.unwrap()(scope, inp);
+                    if let Some(func) = &self.executed_any_fn {
+                        return func(state, inp);
                     }
 
                     match inp {
-                        Token::Number(a) => return self.number_fn.unwrap_or(|_, _| None)(scope, a),
-                        Token::Boolean(a) => {
-                            return self.boolean_fn.unwrap_or(|_, _| None)(scope, a)
+                        Token::Number(a) => {
+                            if let Some(func) = &self.number_fn {
+                                return func(state, a);
+                            }
                         }
-                        Token::Atom(a) => return self.atom_fn.unwrap_or(|_, _| None)(scope, a),
-                        Token::String(a) => return self.string_fn.unwrap_or(|_, _| None)(scope, a),
-                        Token::List(a) => return self.list_fn.unwrap_or(|_, _| None)(scope, a),
-                        a => return self.any_fn.unwrap_or(|_, _| None)(scope, a),
-                    }
+                        Token::Boolean(a) => {
+                            if let Some(func) = &self.boolean_fn {
+                                return func(state, a);
+                            }
+                        }
+                        Token::Atom(a) => {
+                            if let Some(func) = &self.atom_fn {
+                                return func(state, a);
+                            }
+                        }
+                        Token::String(a) => {
+                            if let Some(func) = &self.string_fn {
+                                return func(state, a);
+                            }
+                        }
+                        Token::List(a) => {
+                            if let Some(func) = &self.list_fn {
+                                return func(state, a);
+                            }
+                        }
+                        a => {
+                            if let Some(func) = &self.any_fn {
+                                return func(state, a);
+                            }
+                        }
+                    };
+
+                    return None;
                 }
                 _ => (),
             }
